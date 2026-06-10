@@ -2,13 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import API_URL from './config';
 import './App.css';
 
-// ── Constantes ────────────────────────────────────────────────────────────
 const EMPTY_FORM = {
   date: new Date().toISOString().slice(0, 10),
   type: 'TEL',
-  nom: '',
-  prenom: '',
-  tags: [],
+  prenom: '', nom: '',
   id_adherent: false, id_non_adherent: false,
   id_ancien_adherent: false, id_structure: false, id_autres: false,
   motif_declaration: false, motif_adjonction: false, motif_juridique: false,
@@ -16,7 +13,8 @@ const EMPTY_FORM = {
   motif_adhesion: false, motif_activite_artistique: false, motif_autres: false,
   mail: '', telephone: '',
   qui_ck: false, qui_kr: false, qui_lv: false,
-  remarques: '', suivi: '', newsletter: false, comment_connu: ''
+  remarques: '', suivi: '', newsletter: false, comment_connu: '',
+  tags: []
 };
 
 const ID_FIELDS = [
@@ -62,12 +60,7 @@ function getQui(row) {
   return [row.qui_ck && 'CK', row.qui_kr && 'KR', row.qui_lv && 'LV'].filter(Boolean).join(', ') || '—';
 }
 
-function getFullName(row) {
-  const parts = [row.prenom, row.nom].filter(Boolean);
-  return parts.length > 0 ? parts.join(' ') : '—';
-}
-
-// ── Ecran de login ─────────────────────────────────────────────────────────
+// ── Login ──────────────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -75,8 +68,7 @@ function LoginScreen({ onLogin }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       const res = await fetch(`${API_URL}/login`, {
         method: 'POST',
@@ -86,11 +78,8 @@ function LoginScreen({ onLogin }) {
       if (!res.ok) { setError('Mot de passe incorrect.'); return; }
       const { token } = await res.json();
       onLogin(token);
-    } catch (err) {
-      setError('Impossible de contacter le serveur.');
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError('Impossible de contacter le serveur.'); }
+    finally { setLoading(false); }
   }
 
   return (
@@ -102,14 +91,7 @@ function LoginScreen({ onLogin }) {
         <form onSubmit={handleSubmit} className="login-form">
           <div className="field">
             <label>Mot de passe</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-              autoFocus
-              required
-            />
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" autoFocus required />
           </div>
           {error && <p className="form-error">{error}</p>}
           <button type="submit" className="btn btn--primary btn--full" disabled={loading}>
@@ -121,7 +103,7 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-// ── CheckPill ────────────────────────────────────────────────────────────
+// ── CheckPill ──────────────────────────────────────────────────────────────────
 function CheckPill({ checked, onChange, label, accent }) {
   return (
     <label className={`pill ${checked ? 'pill--on' : ''} ${accent ? 'pill--accent' : ''}`}>
@@ -131,31 +113,72 @@ function CheckPill({ checked, onChange, label, accent }) {
   );
 }
 
-// ── Formulaire de saisie ────────────────────────────────────────────────────
-function ContactForm({ initial, onSaved, onCancel, token }) {
-  const [form, setForm] = useState(initial || EMPTY_FORM);
+// ── Saisie de tags ─────────────────────────────────────────────────────────────
+function TagInput({ tags, onChange, allTags }) {
+  const [input, setInput] = useState('');
+  const suggestions = allTags.filter(t => t.toLowerCase().includes(input.toLowerCase()) && !tags.includes(t));
+
+  function addTag(tag) {
+    const clean = tag.trim();
+    if (clean && !tags.includes(clean)) onChange([...tags, clean]);
+    setInput('');
+  }
+
+  function removeTag(tag) {
+    onChange(tags.filter(t => t !== tag));
+  }
+
+  function handleKey(e) {
+    if ((e.key === 'Enter' || e.key === ',') && input.trim()) {
+      e.preventDefault();
+      addTag(input);
+    }
+    if (e.key === 'Backspace' && !input && tags.length) {
+      removeTag(tags[tags.length - 1]);
+    }
+  }
+
+  return (
+    <div className="tag-input">
+      <div className="tag-input__tags">
+        {tags.map(t => (
+          <span key={t} className="tag">
+            {t}
+            <button type="button" onClick={() => removeTag(t)} className="tag__remove">×</button>
+          </span>
+        ))}
+        <input
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={handleKey}
+          placeholder={tags.length === 0 ? 'Ajouter un tag…' : ''}
+          className="tag-input__field"
+        />
+      </div>
+      {input && suggestions.length > 0 && (
+        <div className="tag-suggestions">
+          {suggestions.slice(0, 6).map(s => (
+            <button key={s} type="button" className="tag-suggestion" onClick={() => addTag(s)}>{s}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Formulaire ─────────────────────────────────────────────────────────────────
+function ContactForm({ initial, onSaved, onCancel, token, allTags }) {
+  const [form, setForm] = useState(initial ? { ...initial, tags: initial.tags || [] } : EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [tagInput, setTagInput] = useState('');
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
-
-  const addTag = () => {
-    if (tagInput.trim() && !form.tags.includes(tagInput.trim())) {
-      set('tags', [...form.tags, tagInput.trim()]);
-      setTagInput('');
-    }
-  };
-
-  const removeTag = (index) => {
-    set('tags', form.tags.filter((_, i) => i !== index));
-  };
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!form.date) { setError('La date est obligatoire.'); return; }
-    setSaving(true);
-    setError('');
+    setSaving(true); setError('');
     try {
       const method = form.id ? 'PUT' : 'POST';
       const url = form.id ? `${API_URL}/contacts/${form.id}` : `${API_URL}/contacts`;
@@ -165,8 +188,7 @@ function ContactForm({ initial, onSaved, onCancel, token }) {
         body: JSON.stringify(form)
       });
       if (!res.ok) throw new Error(await res.text());
-      const saved = await res.json();
-      onSaved(saved, !!form.id);
+      onSaved(await res.json(), !!form.id);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -176,6 +198,20 @@ function ContactForm({ initial, onSaved, onCancel, token }) {
 
   return (
     <form className="contact-form" onSubmit={handleSubmit}>
+
+      {/* Nom / Prénom */}
+      <div className="form-row">
+        <div className="field">
+          <label>Prénom</label>
+          <input type="text" value={form.prenom} onChange={e => set('prenom', e.target.value)} placeholder="Prénom de l'artiste" />
+        </div>
+        <div className="field">
+          <label>Nom</label>
+          <input type="text" value={form.nom} onChange={e => set('nom', e.target.value)} placeholder="Nom de l'artiste" />
+        </div>
+      </div>
+
+      {/* Date / Type */}
       <div className="form-row form-row--top">
         <div className="field">
           <label>Date</label>
@@ -185,9 +221,7 @@ function ContactForm({ initial, onSaved, onCancel, token }) {
           <label>Type</label>
           <div className="toggle-group">
             {['TEL', 'PRES'].map(t => (
-              <button key={t} type="button"
-                className={`toggle ${form.type === t ? 'toggle--on' : ''}`}
-                onClick={() => set('type', t)}>
+              <button key={t} type="button" className={`toggle ${form.type === t ? 'toggle--on' : ''}`} onClick={() => set('type', t)}>
                 {t === 'TEL' ? '📞 Téléphone' : '🤝 Présentiel'}
               </button>
             ))}
@@ -196,55 +230,16 @@ function ContactForm({ initial, onSaved, onCancel, token }) {
       </div>
 
       <fieldset>
-        <legend>Artiste</legend>
-        <div className="form-row">
-          <div className="field">
-            <label>Prénom</label>
-            <input type="text" value={form.prenom} onChange={e => set('prenom', e.target.value)} placeholder="Jean" />
-          </div>
-          <div className="field">
-            <label>Nom</label>
-            <input type="text" value={form.nom} onChange={e => set('nom', e.target.value)} placeholder="Dupont" />
-          </div>
-        </div>
-        <div className="field">
-          <label>Tags</label>
-          <div className="tags-input">
-            <input 
-              type="text" 
-              value={tagInput} 
-              onChange={e => setTagInput(e.target.value)}
-              onKeyPress={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
-              placeholder="Ajouter un tag et appuyer Entrée"
-            />
-            <button type="button" onClick={addTag} className="btn btn--sm btn--ghost">Ajouter</button>
-          </div>
-          <div className="pills-row">
-            {form.tags.map((tag, idx) => (
-              <div key={idx} className="tag-item">
-                <span>{tag}</span>
-                <button type="button" onClick={() => removeTag(idx)} className="tag-remove">✕</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </fieldset>
-
-      <fieldset>
         <legend>Identification</legend>
         <div className="pills-row">
-          {ID_FIELDS.map(f => (
-            <CheckPill key={f.key} label={f.label} checked={!!form[f.key]} onChange={v => set(f.key, v)} />
-          ))}
+          {ID_FIELDS.map(f => <CheckPill key={f.key} label={f.label} checked={!!form[f.key]} onChange={v => set(f.key, v)} />)}
         </div>
       </fieldset>
 
       <fieldset>
         <legend>Motif(s)</legend>
         <div className="pills-row">
-          {MOTIF_FIELDS.map(f => (
-            <CheckPill key={f.key} label={f.label} accent checked={!!form[f.key]} onChange={v => set(f.key, v)} />
-          ))}
+          {MOTIF_FIELDS.map(f => <CheckPill key={f.key} label={f.label} accent checked={!!form[f.key]} onChange={v => set(f.key, v)} />)}
         </div>
       </fieldset>
 
@@ -262,7 +257,7 @@ function ContactForm({ initial, onSaved, onCancel, token }) {
       <fieldset>
         <legend>Conseiller·ère</legend>
         <div className="pills-row">
-          {[['qui_ck', 'CK'], ['qui_kr', 'KR'], ['qui_lv', 'LV']].map(([k, l]) => (
+          {[['qui_ck','CK'],['qui_kr','KR'],['qui_lv','LV']].map(([k,l]) => (
             <CheckPill key={k} label={l} checked={!!form[k]} onChange={v => set(k, v)} />
           ))}
         </div>
@@ -289,6 +284,12 @@ function ContactForm({ initial, onSaved, onCancel, token }) {
         </div>
       </div>
 
+      {/* Tags */}
+      <div className="field">
+        <label>Tags <span className="field-hint">Entrée ou virgule pour valider</span></label>
+        <TagInput tags={form.tags || []} onChange={tags => set('tags', tags)} allTags={allTags} />
+      </div>
+
       {error && <p className="form-error">{error}</p>}
       <div className="form-actions">
         {onCancel && <button type="button" className="btn btn--ghost" onClick={onCancel}>Annuler</button>}
@@ -300,7 +301,7 @@ function ContactForm({ initial, onSaved, onCancel, token }) {
   );
 }
 
-// ── Tableau ───────────────────────────────────────────────────────────────
+// ── Tableau ────────────────────────────────────────────────────────────────────
 function ContactTable({ contacts, onEdit, onDelete }) {
   if (!contacts.length) return <div className="empty-state">Aucun contact enregistré pour cette période.</div>;
   return (
@@ -308,8 +309,8 @@ function ContactTable({ contacts, onEdit, onDelete }) {
       <table className="contacts-table">
         <thead>
           <tr>
-            <th>Date</th><th>Type</th><th>Artiste</th><th>Tags</th><th>Profil</th><th>Motif(s)</th>
-            <th>Mail</th><th>Tél</th><th>Qui</th><th>Remarques</th><th></th>
+            <th>Date</th><th>Type</th><th>Artiste</th><th>Profil</th><th>Motif(s)</th>
+            <th>Mail</th><th>Qui</th><th>Remarques</th><th>Tags</th><th></th>
           </tr>
         </thead>
         <tbody>
@@ -317,14 +318,15 @@ function ContactTable({ contacts, onEdit, onDelete }) {
             <tr key={row.id}>
               <td className="td-date">{formatDate(row.date)}</td>
               <td><span className={`badge badge--${row.type.toLowerCase()}`}>{row.type}</span></td>
-              <td className="td-artiste"><strong>{getFullName(row)}</strong></td>
-              <td className="td-tags">{row.tags && row.tags.length > 0 ? row.tags.join(', ') : '—'}</td>
+              <td className="td-artiste">{[row.prenom, row.nom].filter(Boolean).join(' ') || '—'}</td>
               <td className="td-profil">{getIdLabel(row)}</td>
               <td className="td-motif">{getMotifs(row)}</td>
               <td className="td-mail">{row.mail ? <a href={`mailto:${row.mail}`}>{row.mail}</a> : '—'}</td>
-              <td>{row.telephone || '—'}</td>
               <td>{getQui(row)}</td>
               <td className="td-remarques" title={row.remarques}>{row.remarques || '—'}</td>
+              <td className="td-tags">
+                {(row.tags || []).map(t => <span key={t} className="tag tag--sm">{t}</span>)}
+              </td>
               <td className="td-actions">
                 <button className="btn-icon" onClick={() => onEdit(row)} title="Modifier">✏️</button>
                 <button className="btn-icon btn-icon--del" onClick={() => onDelete(row.id)} title="Supprimer">🗑️</button>
@@ -337,28 +339,25 @@ function ContactTable({ contacts, onEdit, onDelete }) {
   );
 }
 
-// ── Dashboard ────────────────────────────────────────────────────────────
+// ── Dashboard ──────────────────────────────────────────────────────────────────
 function StatBar({ label, value, max, color }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
     <div className="stat-bar">
       <div className="stat-bar__label">{label}</div>
-      <div className="stat-bar__track">
-        <div className="stat-bar__fill" style={{ width: `${pct}%`, background: color || 'var(--blue)' }} />
-      </div>
+      <div className="stat-bar__track"><div className="stat-bar__fill" style={{ width: `${pct}%`, background: color || 'var(--blue)' }} /></div>
       <div className="stat-bar__val">{value}</div>
     </div>
   );
 }
 
-function Dashboard({ stats, statsError }) {
-  if (statsError) return <div className="form-error">{statsError}</div>;
-  if (!stats) return <div className="loading">Chargement des statistiques…</div>;
-  const total = (stats.byType || []).reduce((s, r) => s + parseInt(r.n || 0), 0);
+function Dashboard({ stats }) {
+  if (!stats) return <div className="loading">Chargement…</div>;
+  const total = (stats.byType || []).reduce((s, r) => s + parseInt(r.n), 0);
   const tel = stats.byType?.find(r => r.type === 'TEL')?.n || 0;
   const pres = stats.byType?.find(r => r.type === 'PRES')?.n || 0;
   const motifs = stats.byMotif || {};
-  const maxMotif = Math.max(...Object.values(motifs).map(Number));
+  const maxMotif = Math.max(...Object.values(motifs).map(Number), 1);
   const qui = stats.byQui || {};
   return (
     <div className="dashboard">
@@ -376,40 +375,31 @@ function Dashboard({ stats, statsError }) {
       <div className="stats-section">
         <h3>Par conseiller·ère</h3>
         {[['ck','CK'],['kr','KR'],['lv','LV']].map(([k,l]) => (
-          <StatBar key={k} label={l} value={Number(qui[k])||0} max={Math.max(Number(qui.ck)||0, Number(qui.kr)||0, Number(qui.lv)||0)} color="var(--yellow)" />
+          <StatBar key={k} label={l} value={Number(qui[k])||0} max={Math.max(Number(qui.ck)||0, Number(qui.kr)||0, Number(qui.lv)||0, 1)} color="var(--yellow)" />
         ))}
       </div>
     </div>
   );
 }
 
-// ── App principale ───────────────────────────────────────────────────────
+// ── App ────────────────────────────────────────────────────────────────────────
 export default function App() {
   const [token, setToken] = useState(() => sessionStorage.getItem('mda_token') || '');
   const [view, setView] = useState('list');
   const [contacts, setContacts] = useState([]);
   const [stats, setStats] = useState(null);
-  const [statsError, setStatsError] = useState('');
   const [editing, setEditing] = useState(null);
-  const [filters, setFilters] = useState({ type: '', from: '', to: '' });
+  const [allTags, setAllTags] = useState([]);
+  const [filters, setFilters] = useState({ type: '', from: '', to: '', tag: '' });
   const [loading, setLoading] = useState(false);
 
-  function handleLogin(t) {
-    sessionStorage.setItem('mda_token', t);
-    setToken(t);
-  }
+  function handleLogin(t) { sessionStorage.setItem('mda_token', t); setToken(t); }
+  function handleLogout() { sessionStorage.removeItem('mda_token'); setToken(''); }
 
-  function handleLogout() {
-    sessionStorage.removeItem('mda_token');
-    setToken('');
-  }
-
-  const apiFetch = useCallback((url, options = {}) => {
-    return fetch(url, {
-      ...options,
-      headers: { ...(options.headers || {}), 'Authorization': token }
-    });
-  }, [token]);
+  const apiFetch = useCallback((url, options = {}) =>
+    fetch(url, { ...options, headers: { ...(options.headers || {}), 'Authorization': token } }),
+    [token]
+  );
 
   const loadContacts = useCallback(async () => {
     setLoading(true);
@@ -417,16 +407,21 @@ export default function App() {
     if (filters.type) params.set('type', filters.type);
     if (filters.from) params.set('from', filters.from);
     if (filters.to)   params.set('to', filters.to);
+    if (filters.tag)  params.set('tag', filters.tag);
     try {
       const res = await apiFetch(`${API_URL}/contacts?${params}`);
       if (res.status === 401) { handleLogout(); return; }
-      if (!res.ok) throw new Error('Erreur lors du chargement');
       setContacts(await res.json());
-    } catch(e) { 
-      console.error(e);
-    }
+    } catch(e) { console.error(e); }
     finally { setLoading(false); }
   }, [filters, apiFetch]);
+
+  const loadTags = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/tags`);
+      setAllTags(await res.json());
+    } catch(e) { console.error(e); }
+  }, []);
 
   const loadStats = useCallback(async () => {
     const params = new URLSearchParams();
@@ -434,17 +429,11 @@ export default function App() {
     if (filters.to)   params.set('to', filters.to);
     try {
       const res = await apiFetch(`${API_URL}/stats?${params}`);
-      if (!res.ok) throw new Error('Erreur lors du chargement des statistiques');
       setStats(await res.json());
-      setStatsError('');
-    } catch(e) { 
-      console.error(e);
-      setStatsError('Impossible de charger les statistiques.');
-      setStats(null);
-    }
+    } catch(e) { console.error(e); }
   }, [filters, apiFetch]);
 
-  useEffect(() => { if (token) loadContacts(); }, [token, loadContacts]);
+  useEffect(() => { if (token) { loadContacts(); loadTags(); } }, [token, loadContacts, loadTags]);
   useEffect(() => { if (token && view === 'stats') loadStats(); }, [token, view, loadStats]);
 
   if (!token) return <LoginScreen onLogin={handleLogin} />;
@@ -452,29 +441,22 @@ export default function App() {
   function handleSaved(contact, isUpdate) {
     if (isUpdate) setContacts(cs => cs.map(c => c.id === contact.id ? contact : c));
     else setContacts(cs => [contact, ...cs]);
+    loadTags();
     setEditing(null);
     setView('list');
   }
 
   async function handleDelete(id) {
     if (!window.confirm('Supprimer ce contact ?')) return;
-    try {
-      const res = await apiFetch(`${API_URL}/contacts/${id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: 'Erreur lors de la suppression' }));
-        throw new Error(errorData.error || 'Erreur lors de la suppression');
-      }
-      setContacts(cs => cs.filter(c => c.id !== id));
-    } catch (err) {
-      alert('Erreur: ' + err.message);
-    }
+    await apiFetch(`${API_URL}/contacts/${id}`, { method: 'DELETE' });
+    setContacts(cs => cs.filter(c => c.id !== id));
   }
 
   function handleExport() {
     const params = new URLSearchParams();
     if (filters.type) params.set('type', filters.type);
     if (filters.from) params.set('from', filters.from);
-    if (filters.to) params.set('to', filters.to);
+    if (filters.to)   params.set('to', filters.to);
     params.set('auth', token);
     window.open(`${API_URL}/export/csv?${params}`, '_blank');
   }
@@ -493,7 +475,7 @@ export default function App() {
           <button className={`nav-btn ${view === 'list' ? 'nav-btn--on' : ''}`} onClick={() => { setEditing(null); setView('list'); }}>Liste</button>
           <button className={`nav-btn ${view === 'new' ? 'nav-btn--on' : ''}`} onClick={() => { setEditing(null); setView('new'); }}>+ Nouveau</button>
           <button className={`nav-btn ${view === 'stats' ? 'nav-btn--on' : ''}`} onClick={() => setView('stats')}>Statistiques</button>
-          <button className="nav-btn nav-btn--logout" onClick={handleLogout} title="Se déconnecter">⎋ Déconnexion</button>
+          <button className="nav-btn nav-btn--logout" onClick={handleLogout}>⎋ Déconnexion</button>
         </nav>
       </header>
 
@@ -505,7 +487,11 @@ export default function App() {
         </select>
         <input type="date" value={filters.from} onChange={e => setFilters(f => ({ ...f, from: e.target.value }))} />
         <input type="date" value={filters.to}   onChange={e => setFilters(f => ({ ...f, to: e.target.value }))} />
-        <button className="btn btn--ghost btn--sm" onClick={() => setFilters({ type: '', from: '', to: '' })}>Réinitialiser</button>
+        <select value={filters.tag} onChange={e => setFilters(f => ({ ...f, tag: e.target.value }))}>
+          <option value="">Tous tags</option>
+          {allTags.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <button className="btn btn--ghost btn--sm" onClick={() => setFilters({ type: '', from: '', to: '', tag: '' })}>Réinitialiser</button>
         <button className="btn btn--export btn--sm" onClick={handleExport}>⬇ Export CSV</button>
         <span className="filter-count">{contacts.length} contact{contacts.length > 1 ? 's' : ''}</span>
       </div>
@@ -514,13 +500,13 @@ export default function App() {
         {view === 'new' && !editing && (
           <section className="section-form">
             <h2>Nouveau contact</h2>
-            <ContactForm token={token} onSaved={handleSaved} onCancel={() => setView('list')} />
+            <ContactForm token={token} allTags={allTags} onSaved={handleSaved} onCancel={() => setView('list')} />
           </section>
         )}
         {editing && (
           <section className="section-form">
             <h2>Modifier le contact</h2>
-            <ContactForm token={token} initial={editing} onSaved={handleSaved} onCancel={() => { setEditing(null); setView('list'); }} />
+            <ContactForm token={token} allTags={allTags} initial={editing} onSaved={handleSaved} onCancel={() => { setEditing(null); setView('list'); }} />
           </section>
         )}
         {view === 'list' && !editing && (
@@ -528,11 +514,7 @@ export default function App() {
             {loading ? <div className="loading">Chargement…</div> : <ContactTable contacts={contacts} onEdit={row => setEditing(row)} onDelete={handleDelete} />}
           </section>
         )}
-        {view === 'stats' && !editing && (
-          <section>
-            <Dashboard stats={stats} statsError={statsError} />
-          </section>
-        )}
+        {view === 'stats' && !editing && <section><Dashboard stats={stats} /></section>}
       </main>
     </div>
   );
