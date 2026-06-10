@@ -167,7 +167,11 @@ fieldset legend { font-size: 12px; font-weight: 700; text-transform: uppercase; 
 .btn--ghost { background: transparent; border: 1.5px solid var(--border); color: var(--text); }
 .btn--ghost:hover { border-color: var(--blue); color: var(--blue); }
 .btn--export { background: var(--mint); color: var(--charbon); }
+.btn--secondary { background: var(--azure); color: white; }
+.btn--secondary:hover { filter: brightness(.92); }
 .btn--export:hover { filter: brightness(.92); }
+.btn--secondary { background: var(--azure); color: white; }
+.btn--secondary:hover { filter: brightness(.92); }
 .btn--sm { padding: 6px 14px; font-size: 13px; }
 .btn--full { width: 100%; justify-content: center; }
 
@@ -247,6 +251,9 @@ fieldset legend { font-size: 12px; font-weight: 700; text-transform: uppercase; 
 .tag-suggestion:hover { background: var(--off); }
 .field-hint { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 6px; }
 
+.motif-add { display: flex; gap: 8px; }
+.motif-add input { flex: 1; border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 12px; font-size: 14px; font-family: inherit; }
+
 /* Login */
 .login-screen { min-height: 100vh; background: var(--charbon); display: flex; align-items: center; justify-content: center; padding: 24px; }
 .login-card { background: white; border-radius: 12px; padding: 40px; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,.4); text-align: center; }
@@ -265,3 +272,21 @@ fieldset legend { font-size: 12px; font-weight: 700; text-transform: uppercase; 
   .stats-cards { grid-template-columns: 1fr; }
   .app-main { padding: 12px; }
 }
+
+/* Motif Settings */
+.motif-settings { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; max-width: 500px; }
+.motif-settings h3 { font-size: 18px; font-weight: 700; margin-bottom: 16px; color: var(--charbon); }
+
+.motif-form { display: flex; gap: 10px; margin-bottom: 16px; }
+.motif-form input { flex: 1; border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 12px; font-size: 14px; font-family: inherit; }
+.motif-form input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,4,242,.1); }
+
+.motif-list { display: flex; flex-direction: column; gap: 8px; }
+.motif-empty { color: var(--muted); font-size: 13px; padding: 12px 0; }
+
+.motif-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 12px; background: var(--off); border-radius: var(--radius);
+  font-size: 14px;
+}
+.motif-item span { font-weight: 500; }
