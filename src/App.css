@@ -290,3 +290,29 @@ fieldset legend { font-size: 12px; font-weight: 700; text-transform: uppercase; 
   font-size: 14px;
 }
 .motif-item span { font-weight: 500; }
+
+/* Footer */
+.app-footer {
+  background: var(--charbon);
+  color: var(--white);
+  text-align: center;
+  padding: 12px 24px;
+  font-size: 12px;
+  border-top: 1px solid rgba(255,255,255,.1);
+  margin-top: auto;
+}
+.app-footer p { margin: 0; }
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+.app-main {
+  flex: 1;
+}
+
+.login-screen {
+  display: flex;
+  flex-direction: column;
+}
