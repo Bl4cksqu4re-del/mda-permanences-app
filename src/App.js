@@ -135,7 +135,7 @@ function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifA
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
   async function handleAddMotif(e) {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!newMotif.trim()) return;
     setAddingMotif(true);
     try {
@@ -144,11 +144,17 @@ function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifA
         headers: { 'Content-Type': 'application/json', 'Authorization': token },
         body: JSON.stringify({ label: newMotif })
       });
+      if (res.status === 401) {
+        console.error('401 - Token invalide ou expiré');
+        // Logout manuel n'est pas possible ici, mais le logout global se déclenchera au prochain appel
+        throw new Error('Authentification échouée. Veuillez vous reconnecter.');
+      }
       if (!res.ok) throw new Error(await res.text());
       const m = await res.json();
       onMotifAdded(m);
       setNewMotif('');
     } catch (err) {
+      console.error('Erreur handleAddMotif:', err);
       alert('Erreur: ' + err.message);
     } finally {
       setAddingMotif(false);
@@ -243,18 +249,19 @@ function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifA
 
       <div className="field">
         <label>Ajouter un motif personnalisé</label>
-        <form className="motif-add" onSubmit={handleAddMotif}>
+        <div className="motif-add">
           <input
             type="text"
             value={newMotif}
             onChange={e => setNewMotif(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddMotif(e); } }}
             placeholder="Ex: Formation, Suivi pro…"
             disabled={addingMotif}
           />
-          <button type="submit" className="btn btn--sm btn--secondary" disabled={addingMotif || !newMotif.trim()}>
-            {addingMotif ? '+...' : '+'}
+          <button type="button" className="btn btn--sm btn--secondary" onClick={handleAddMotif} disabled={addingMotif || !newMotif.trim()}>
+            {addingMotif ? '...' : '+ Ajouter'}
           </button>
-        </form>
+        </div>
       </div>
 
       <div className="form-row">
@@ -420,6 +427,7 @@ export default function App() {
   const loadCustomMotifs = useCallback(async () => {
     try {
       const res = await apiFetch(`${API_URL}/motifs-custom`);
+      if (res.status === 401) { handleLogout(); return; }
       setCustomMotifs(await res.json());
     } catch(e) { console.error(e); }
   }, [apiFetch]);
