@@ -65,6 +65,14 @@ function getQui(row) {
   return [row.qui_ck && 'CK', row.qui_kr && 'KR', row.qui_lv && 'LV'].filter(Boolean).join(', ') || '—';
 }
 
+function Footer() {
+  return (
+    <footer className="app-footer">
+      <p>Tous droits réservés © Bl4cksquare art. L111-1 du CPI</p>
+    </footer>
+  );
+}
+
 function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -103,6 +111,7 @@ function LoginScreen({ onLogin }) {
           </button>
         </form>
       </div>
+      <Footer />
     </div>
   );
 }
@@ -513,6 +522,7 @@ export default function App() {
         )}
         {view === 'stats' && !editing && <section><Dashboard stats={stats} /></section>}
       </main>
+      <Footer />
     </div>
   );
 }
