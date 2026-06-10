@@ -14,7 +14,7 @@ const EMPTY_FORM = {
   mail: '', telephone: '',
   qui_ck: false, qui_kr: false, qui_lv: false,
   remarques: '', suivi: '', newsletter: false, comment_connu: '',
-  tags: []
+  motifs_custom: []
 };
 
 const ID_FIELDS = [
@@ -48,8 +48,13 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function getMotifs(row) {
-  return MOTIF_FIELDS.filter(f => row[f.key]).map(f => f.label).join(', ') || '—';
+function getMotifs(row, customMotifs) {
+  const fixed = MOTIF_FIELDS.filter(f => row[f.key]).map(f => f.label);
+  const custom = (row.motifs_custom || []).map(id => {
+    const m = customMotifs.find(cm => cm.id === id);
+    return m ? m.label : null;
+  }).filter(Boolean);
+  return [...fixed, ...custom].join(', ') || '—';
 }
 
 function getIdLabel(row) {
@@ -60,7 +65,6 @@ function getQui(row) {
   return [row.qui_ck && 'CK', row.qui_kr && 'KR', row.qui_lv && 'LV'].filter(Boolean).join(', ') || '—';
 }
 
-// ── Login ──────────────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -103,7 +107,6 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-// ── CheckPill ──────────────────────────────────────────────────────────────────
 function CheckPill({ checked, onChange, label, accent }) {
   return (
     <label className={`pill ${checked ? 'pill--on' : ''} ${accent ? 'pill--accent' : ''}`}>
@@ -113,67 +116,35 @@ function CheckPill({ checked, onChange, label, accent }) {
   );
 }
 
-// ── Saisie de tags ─────────────────────────────────────────────────────────────
-function TagInput({ tags, onChange, allTags }) {
-  const [input, setInput] = useState('');
-  const suggestions = allTags.filter(t => t.toLowerCase().includes(input.toLowerCase()) && !tags.includes(t));
-
-  function addTag(tag) {
-    const clean = tag.trim();
-    if (clean && !tags.includes(clean)) onChange([...tags, clean]);
-    setInput('');
-  }
-
-  function removeTag(tag) {
-    onChange(tags.filter(t => t !== tag));
-  }
-
-  function handleKey(e) {
-    if ((e.key === 'Enter' || e.key === ',') && input.trim()) {
-      e.preventDefault();
-      addTag(input);
-    }
-    if (e.key === 'Backspace' && !input && tags.length) {
-      removeTag(tags[tags.length - 1]);
-    }
-  }
-
-  return (
-    <div className="tag-input">
-      <div className="tag-input__tags">
-        {tags.map(t => (
-          <span key={t} className="tag">
-            {t}
-            <button type="button" onClick={() => removeTag(t)} className="tag__remove">×</button>
-          </span>
-        ))}
-        <input
-          type="text"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKey}
-          placeholder={tags.length === 0 ? 'Ajouter un tag…' : ''}
-          className="tag-input__field"
-        />
-      </div>
-      {input && suggestions.length > 0 && (
-        <div className="tag-suggestions">
-          {suggestions.slice(0, 6).map(s => (
-            <button key={s} type="button" className="tag-suggestion" onClick={() => addTag(s)}>{s}</button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Formulaire ─────────────────────────────────────────────────────────────────
-function ContactForm({ initial, onSaved, onCancel, token, allTags }) {
-  const [form, setForm] = useState(initial ? { ...initial, tags: initial.tags || [] } : EMPTY_FORM);
+function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifAdded, onMotifDeleted }) {
+  const [form, setForm] = useState(initial ? { ...initial, motifs_custom: initial.motifs_custom || [] } : EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [newMotif, setNewMotif] = useState('');
+  const [addingMotif, setAddingMotif] = useState(false);
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+
+  async function handleAddMotif(e) {
+    e.preventDefault();
+    if (!newMotif.trim()) return;
+    setAddingMotif(true);
+    try {
+      const res = await fetch(`${API_URL}/motifs-custom`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': token },
+        body: JSON.stringify({ label: newMotif })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const m = await res.json();
+      onMotifAdded(m);
+      setNewMotif('');
+    } catch (err) {
+      alert('Erreur: ' + err.message);
+    } finally {
+      setAddingMotif(false);
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -198,8 +169,6 @@ function ContactForm({ initial, onSaved, onCancel, token, allTags }) {
 
   return (
     <form className="contact-form" onSubmit={handleSubmit}>
-
-      {/* Nom / Prénom */}
       <div className="form-row">
         <div className="field">
           <label>Prénom</label>
@@ -211,7 +180,6 @@ function ContactForm({ initial, onSaved, onCancel, token, allTags }) {
         </div>
       </div>
 
-      {/* Date / Type */}
       <div className="form-row form-row--top">
         <div className="field">
           <label>Date</label>
@@ -237,11 +205,48 @@ function ContactForm({ initial, onSaved, onCancel, token, allTags }) {
       </fieldset>
 
       <fieldset>
-        <legend>Motif(s)</legend>
+        <legend>Motifs standards</legend>
         <div className="pills-row">
           {MOTIF_FIELDS.map(f => <CheckPill key={f.key} label={f.label} accent checked={!!form[f.key]} onChange={v => set(f.key, v)} />)}
         </div>
       </fieldset>
+
+      {customMotifs.length > 0 && (
+        <fieldset>
+          <legend>Motifs personnalisés</legend>
+          <div className="pills-row">
+            {customMotifs.map(m => (
+              <label key={m.id} className={`pill ${(form.motifs_custom || []).includes(m.id) ? 'pill--on' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={(form.motifs_custom || []).includes(m.id)}
+                  onChange={e => {
+                    const ids = form.motifs_custom || [];
+                    set('motifs_custom', e.target.checked ? [...ids, m.id] : ids.filter(id => id !== m.id));
+                  }}
+                />
+                {m.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      <div className="field">
+        <label>Ajouter un motif personnalisé</label>
+        <form className="motif-add" onSubmit={handleAddMotif}>
+          <input
+            type="text"
+            value={newMotif}
+            onChange={e => setNewMotif(e.target.value)}
+            placeholder="Ex: Formation, Suivi pro…"
+            disabled={addingMotif}
+          />
+          <button type="submit" className="btn btn--sm btn--secondary" disabled={addingMotif || !newMotif.trim()}>
+            {addingMotif ? '+...' : '+'}
+          </button>
+        </form>
+      </div>
 
       <div className="form-row">
         <div className="field">
@@ -284,12 +289,6 @@ function ContactForm({ initial, onSaved, onCancel, token, allTags }) {
         </div>
       </div>
 
-      {/* Tags */}
-      <div className="field">
-        <label>Tags <span className="field-hint">Entrée ou virgule pour valider</span></label>
-        <TagInput tags={form.tags || []} onChange={tags => set('tags', tags)} allTags={allTags} />
-      </div>
-
       {error && <p className="form-error">{error}</p>}
       <div className="form-actions">
         {onCancel && <button type="button" className="btn btn--ghost" onClick={onCancel}>Annuler</button>}
@@ -301,8 +300,7 @@ function ContactForm({ initial, onSaved, onCancel, token, allTags }) {
   );
 }
 
-// ── Tableau ────────────────────────────────────────────────────────────────────
-function ContactTable({ contacts, onEdit, onDelete }) {
+function ContactTable({ contacts, onEdit, onDelete, customMotifs }) {
   if (!contacts.length) return <div className="empty-state">Aucun contact enregistré pour cette période.</div>;
   return (
     <div className="table-wrapper">
@@ -310,7 +308,7 @@ function ContactTable({ contacts, onEdit, onDelete }) {
         <thead>
           <tr>
             <th>Date</th><th>Type</th><th>Artiste</th><th>Profil</th><th>Motif(s)</th>
-            <th>Mail</th><th>Qui</th><th>Remarques</th><th>Tags</th><th></th>
+            <th>Mail</th><th>Qui</th><th>Remarques</th><th></th>
           </tr>
         </thead>
         <tbody>
@@ -320,13 +318,10 @@ function ContactTable({ contacts, onEdit, onDelete }) {
               <td><span className={`badge badge--${row.type.toLowerCase()}`}>{row.type}</span></td>
               <td className="td-artiste">{[row.prenom, row.nom].filter(Boolean).join(' ') || '—'}</td>
               <td className="td-profil">{getIdLabel(row)}</td>
-              <td className="td-motif">{getMotifs(row)}</td>
+              <td className="td-motif">{getMotifs(row, customMotifs)}</td>
               <td className="td-mail">{row.mail ? <a href={`mailto:${row.mail}`}>{row.mail}</a> : '—'}</td>
               <td>{getQui(row)}</td>
               <td className="td-remarques" title={row.remarques}>{row.remarques || '—'}</td>
-              <td className="td-tags">
-                {(row.tags || []).map(t => <span key={t} className="tag tag--sm">{t}</span>)}
-              </td>
               <td className="td-actions">
                 <button className="btn-icon" onClick={() => onEdit(row)} title="Modifier">✏️</button>
                 <button className="btn-icon btn-icon--del" onClick={() => onDelete(row.id)} title="Supprimer">🗑️</button>
@@ -339,7 +334,6 @@ function ContactTable({ contacts, onEdit, onDelete }) {
   );
 }
 
-// ── Dashboard ──────────────────────────────────────────────────────────────────
 function StatBar({ label, value, max, color }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
@@ -382,15 +376,14 @@ function Dashboard({ stats }) {
   );
 }
 
-// ── App ────────────────────────────────────────────────────────────────────────
 export default function App() {
   const [token, setToken] = useState(() => sessionStorage.getItem('mda_token') || '');
   const [view, setView] = useState('list');
   const [contacts, setContacts] = useState([]);
   const [stats, setStats] = useState(null);
   const [editing, setEditing] = useState(null);
-  const [allTags, setAllTags] = useState([]);
-  const [filters, setFilters] = useState({ type: '', from: '', to: '', tag: '' });
+  const [customMotifs, setCustomMotifs] = useState([]);
+  const [filters, setFilters] = useState({ type: '', from: '', to: '' });
   const [loading, setLoading] = useState(false);
 
   function handleLogin(t) { sessionStorage.setItem('mda_token', t); setToken(t); }
@@ -407,7 +400,6 @@ export default function App() {
     if (filters.type) params.set('type', filters.type);
     if (filters.from) params.set('from', filters.from);
     if (filters.to)   params.set('to', filters.to);
-    if (filters.tag)  params.set('tag', filters.tag);
     try {
       const res = await apiFetch(`${API_URL}/contacts?${params}`);
       if (res.status === 401) { handleLogout(); return; }
@@ -416,12 +408,12 @@ export default function App() {
     finally { setLoading(false); }
   }, [filters, apiFetch]);
 
-  const loadTags = useCallback(async () => {
+  const loadCustomMotifs = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/tags`);
-      setAllTags(await res.json());
+      const res = await apiFetch(`${API_URL}/motifs-custom`);
+      setCustomMotifs(await res.json());
     } catch(e) { console.error(e); }
-  }, []);
+  }, [apiFetch]);
 
   const loadStats = useCallback(async () => {
     const params = new URLSearchParams();
@@ -433,7 +425,7 @@ export default function App() {
     } catch(e) { console.error(e); }
   }, [filters, apiFetch]);
 
-  useEffect(() => { if (token) { loadContacts(); loadTags(); } }, [token, loadContacts, loadTags]);
+  useEffect(() => { if (token) { loadContacts(); loadCustomMotifs(); } }, [token, loadContacts, loadCustomMotifs]);
   useEffect(() => { if (token && view === 'stats') loadStats(); }, [token, view, loadStats]);
 
   if (!token) return <LoginScreen onLogin={handleLogin} />;
@@ -441,7 +433,6 @@ export default function App() {
   function handleSaved(contact, isUpdate) {
     if (isUpdate) setContacts(cs => cs.map(c => c.id === contact.id ? contact : c));
     else setContacts(cs => [contact, ...cs]);
-    loadTags();
     setEditing(null);
     setView('list');
   }
@@ -450,6 +441,16 @@ export default function App() {
     if (!window.confirm('Supprimer ce contact ?')) return;
     await apiFetch(`${API_URL}/contacts/${id}`, { method: 'DELETE' });
     setContacts(cs => cs.filter(c => c.id !== id));
+  }
+
+  function handleMotifAdded(m) {
+    setCustomMotifs(ms => [...ms, m]);
+  }
+
+  async function handleMotifDeleted(id) {
+    if (!window.confirm('Supprimer ce motif personnalisé ?')) return;
+    await apiFetch(`${API_URL}/motifs-custom/${id}`, { method: 'DELETE' });
+    setCustomMotifs(ms => ms.filter(m => m.id !== id));
   }
 
   function handleExport() {
@@ -487,11 +488,7 @@ export default function App() {
         </select>
         <input type="date" value={filters.from} onChange={e => setFilters(f => ({ ...f, from: e.target.value }))} />
         <input type="date" value={filters.to}   onChange={e => setFilters(f => ({ ...f, to: e.target.value }))} />
-        <select value={filters.tag} onChange={e => setFilters(f => ({ ...f, tag: e.target.value }))}>
-          <option value="">Tous tags</option>
-          {allTags.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <button className="btn btn--ghost btn--sm" onClick={() => setFilters({ type: '', from: '', to: '', tag: '' })}>Réinitialiser</button>
+        <button className="btn btn--ghost btn--sm" onClick={() => setFilters({ type: '', from: '', to: '' })}>Réinitialiser</button>
         <button className="btn btn--export btn--sm" onClick={handleExport}>⬇ Export CSV</button>
         <span className="filter-count">{contacts.length} contact{contacts.length > 1 ? 's' : ''}</span>
       </div>
@@ -500,18 +497,18 @@ export default function App() {
         {view === 'new' && !editing && (
           <section className="section-form">
             <h2>Nouveau contact</h2>
-            <ContactForm token={token} allTags={allTags} onSaved={handleSaved} onCancel={() => setView('list')} />
+            <ContactForm token={token} customMotifs={customMotifs} onSaved={handleSaved} onCancel={() => setView('list')} onMotifAdded={handleMotifAdded} onMotifDeleted={handleMotifDeleted} />
           </section>
         )}
         {editing && (
           <section className="section-form">
             <h2>Modifier le contact</h2>
-            <ContactForm token={token} allTags={allTags} initial={editing} onSaved={handleSaved} onCancel={() => { setEditing(null); setView('list'); }} />
+            <ContactForm token={token} customMotifs={customMotifs} initial={editing} onSaved={handleSaved} onCancel={() => { setEditing(null); setView('list'); }} onMotifAdded={handleMotifAdded} onMotifDeleted={handleMotifDeleted} />
           </section>
         )}
         {view === 'list' && !editing && (
           <section>
-            {loading ? <div className="loading">Chargement…</div> : <ContactTable contacts={contacts} onEdit={row => setEditing(row)} onDelete={handleDelete} />}
+            {loading ? <div className="loading">Chargement…</div> : <ContactTable contacts={contacts} customMotifs={customMotifs} onEdit={row => setEditing(row)} onDelete={handleDelete} />}
           </section>
         )}
         {view === 'stats' && !editing && <section><Dashboard stats={stats} /></section>}
