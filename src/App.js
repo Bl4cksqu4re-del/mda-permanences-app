@@ -51,7 +51,7 @@ function formatDate(d) {
 function getMotifs(row, customMotifs) {
   const fixed = MOTIF_FIELDS.filter(f => row[f.key]).map(f => f.label);
   const custom = (row.motifs_custom || []).map(id => {
-    const m = customMotifs.find(cm => cm.id === id);
+    const m = (customMotifs || []).find(cm => cm.id === id);
     return m ? m.label : null;
   }).filter(Boolean);
   return [...fixed, ...custom].join(', ') || '—';
