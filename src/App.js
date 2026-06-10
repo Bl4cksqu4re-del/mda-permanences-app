@@ -6,6 +6,9 @@ import './App.css';
 const EMPTY_FORM = {
   date: new Date().toISOString().slice(0, 10),
   type: 'TEL',
+  nom: '',
+  prenom: '',
+  tags: [],
   id_adherent: false, id_non_adherent: false,
   id_ancien_adherent: false, id_structure: false, id_autres: false,
   motif_declaration: false, motif_adjonction: false, motif_juridique: false,
@@ -57,6 +60,11 @@ function getIdLabel(row) {
 
 function getQui(row) {
   return [row.qui_ck && 'CK', row.qui_kr && 'KR', row.qui_lv && 'LV'].filter(Boolean).join(', ') || '—';
+}
+
+function getFullName(row) {
+  const parts = [row.prenom, row.nom].filter(Boolean);
+  return parts.length > 0 ? parts.join(' ') : '—';
 }
 
 // ── Ecran de login ─────────────────────────────────────────────────────────
@@ -128,8 +136,20 @@ function ContactForm({ initial, onSaved, onCancel, token }) {
   const [form, setForm] = useState(initial || EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [tagInput, setTagInput] = useState('');
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+
+  const addTag = () => {
+    if (tagInput.trim() && !form.tags.includes(tagInput.trim())) {
+      set('tags', [...form.tags, tagInput.trim()]);
+      setTagInput('');
+    }
+  };
+
+  const removeTag = (index) => {
+    set('tags', form.tags.filter((_, i) => i !== index));
+  };
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -174,6 +194,41 @@ function ContactForm({ initial, onSaved, onCancel, token }) {
           </div>
         </div>
       </div>
+
+      <fieldset>
+        <legend>Artiste</legend>
+        <div className="form-row">
+          <div className="field">
+            <label>Prénom</label>
+            <input type="text" value={form.prenom} onChange={e => set('prenom', e.target.value)} placeholder="Jean" />
+          </div>
+          <div className="field">
+            <label>Nom</label>
+            <input type="text" value={form.nom} onChange={e => set('nom', e.target.value)} placeholder="Dupont" />
+          </div>
+        </div>
+        <div className="field">
+          <label>Tags</label>
+          <div className="tags-input">
+            <input 
+              type="text" 
+              value={tagInput} 
+              onChange={e => setTagInput(e.target.value)}
+              onKeyPress={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+              placeholder="Ajouter un tag et appuyer Entrée"
+            />
+            <button type="button" onClick={addTag} className="btn btn--sm btn--ghost">Ajouter</button>
+          </div>
+          <div className="pills-row">
+            {form.tags.map((tag, idx) => (
+              <div key={idx} className="tag-item">
+                <span>{tag}</span>
+                <button type="button" onClick={() => removeTag(idx)} className="tag-remove">✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </fieldset>
 
       <fieldset>
         <legend>Identification</legend>
@@ -245,7 +300,7 @@ function ContactForm({ initial, onSaved, onCancel, token }) {
   );
 }
 
-// ── Tableau ──────────────────────────────────────────────────────────────
+// ── Tableau ───────────────────────────────────────────────────────────────
 function ContactTable({ contacts, onEdit, onDelete }) {
   if (!contacts.length) return <div className="empty-state">Aucun contact enregistré pour cette période.</div>;
   return (
@@ -253,8 +308,8 @@ function ContactTable({ contacts, onEdit, onDelete }) {
       <table className="contacts-table">
         <thead>
           <tr>
-            <th>Date</th><th>Type</th><th>Profil</th><th>Motif(s)</th>
-            <th>Mail</th><th>Tél</th><th>Qui</th><th>Remarques</th><th>Suivi</th><th></th>
+            <th>Date</th><th>Type</th><th>Artiste</th><th>Tags</th><th>Profil</th><th>Motif(s)</th>
+            <th>Mail</th><th>Tél</th><th>Qui</th><th>Remarques</th><th></th>
           </tr>
         </thead>
         <tbody>
@@ -262,13 +317,14 @@ function ContactTable({ contacts, onEdit, onDelete }) {
             <tr key={row.id}>
               <td className="td-date">{formatDate(row.date)}</td>
               <td><span className={`badge badge--${row.type.toLowerCase()}`}>{row.type}</span></td>
+              <td className="td-artiste"><strong>{getFullName(row)}</strong></td>
+              <td className="td-tags">{row.tags && row.tags.length > 0 ? row.tags.join(', ') : '—'}</td>
               <td className="td-profil">{getIdLabel(row)}</td>
               <td className="td-motif">{getMotifs(row)}</td>
               <td className="td-mail">{row.mail ? <a href={`mailto:${row.mail}`}>{row.mail}</a> : '—'}</td>
               <td>{row.telephone || '—'}</td>
               <td>{getQui(row)}</td>
               <td className="td-remarques" title={row.remarques}>{row.remarques || '—'}</td>
-              <td className="td-suivi" title={row.suivi}>{row.suivi || '—'}</td>
               <td className="td-actions">
                 <button className="btn-icon" onClick={() => onEdit(row)} title="Modifier">✏️</button>
                 <button className="btn-icon btn-icon--del" onClick={() => onDelete(row.id)} title="Supprimer">🗑️</button>
