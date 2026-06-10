@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import API_URL from './config';
 import './App.css';
 
-// ── Constantes ─────────────────────────────────────────────────────────────────
+// ── Constantes ────────────────────────────────────────────────────────────
 const EMPTY_FORM = {
   date: new Date().toISOString().slice(0, 10),
   type: 'TEL',
@@ -59,7 +59,7 @@ function getQui(row) {
   return [row.qui_ck && 'CK', row.qui_kr && 'KR', row.qui_lv && 'LV'].filter(Boolean).join(', ') || '—';
 }
 
-// ── Ecran de login ─────────────────────────────────────────────────────────────
+// ── Ecran de login ─────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -113,7 +113,7 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-// ── CheckPill ──────────────────────────────────────────────────────────────────
+// ── CheckPill ────────────────────────────────────────────────────────────
 function CheckPill({ checked, onChange, label, accent }) {
   return (
     <label className={`pill ${checked ? 'pill--on' : ''} ${accent ? 'pill--accent' : ''}`}>
@@ -123,7 +123,7 @@ function CheckPill({ checked, onChange, label, accent }) {
   );
 }
 
-// ── Formulaire de saisie ───────────────────────────────────────────────────────
+// ── Formulaire de saisie ────────────────────────────────────────────────────
 function ContactForm({ initial, onSaved, onCancel, token }) {
   const [form, setForm] = useState(initial || EMPTY_FORM);
   const [saving, setSaving] = useState(false);
@@ -245,7 +245,7 @@ function ContactForm({ initial, onSaved, onCancel, token }) {
   );
 }
 
-// ── Tableau ────────────────────────────────────────────────────────────────────
+// ── Tableau ──────────────────────────────────────────────────────────────
 function ContactTable({ contacts, onEdit, onDelete }) {
   if (!contacts.length) return <div className="empty-state">Aucun contact enregistré pour cette période.</div>;
   return (
@@ -281,7 +281,7 @@ function ContactTable({ contacts, onEdit, onDelete }) {
   );
 }
 
-// ── Dashboard ──────────────────────────────────────────────────────────────────
+// ── Dashboard ────────────────────────────────────────────────────────────
 function StatBar({ label, value, max, color }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
@@ -295,9 +295,10 @@ function StatBar({ label, value, max, color }) {
   );
 }
 
-function Dashboard({ stats }) {
+function Dashboard({ stats, statsError }) {
+  if (statsError) return <div className="form-error">{statsError}</div>;
   if (!stats) return <div className="loading">Chargement des statistiques…</div>;
-  const total = (stats.byType || []).reduce((s, r) => s + parseInt(r.n), 0);
+  const total = (stats.byType || []).reduce((s, r) => s + parseInt(r.n || 0), 0);
   const tel = stats.byType?.find(r => r.type === 'TEL')?.n || 0;
   const pres = stats.byType?.find(r => r.type === 'PRES')?.n || 0;
   const motifs = stats.byMotif || {};
@@ -326,12 +327,13 @@ function Dashboard({ stats }) {
   );
 }
 
-// ── App principale ─────────────────────────────────────────────────────────────
+// ── App principale ───────────────────────────────────────────────────────
 export default function App() {
   const [token, setToken] = useState(() => sessionStorage.getItem('mda_token') || '');
   const [view, setView] = useState('list');
   const [contacts, setContacts] = useState([]);
   const [stats, setStats] = useState(null);
+  const [statsError, setStatsError] = useState('');
   const [editing, setEditing] = useState(null);
   const [filters, setFilters] = useState({ type: '', from: '', to: '' });
   const [loading, setLoading] = useState(false);
@@ -362,8 +364,11 @@ export default function App() {
     try {
       const res = await apiFetch(`${API_URL}/contacts?${params}`);
       if (res.status === 401) { handleLogout(); return; }
+      if (!res.ok) throw new Error('Erreur lors du chargement');
       setContacts(await res.json());
-    } catch(e) { console.error(e); }
+    } catch(e) { 
+      console.error(e);
+    }
     finally { setLoading(false); }
   }, [filters, apiFetch]);
 
@@ -373,8 +378,14 @@ export default function App() {
     if (filters.to)   params.set('to', filters.to);
     try {
       const res = await apiFetch(`${API_URL}/stats?${params}`);
+      if (!res.ok) throw new Error('Erreur lors du chargement des statistiques');
       setStats(await res.json());
-    } catch(e) { console.error(e); }
+      setStatsError('');
+    } catch(e) { 
+      console.error(e);
+      setStatsError('Impossible de charger les statistiques.');
+      setStats(null);
+    }
   }, [filters, apiFetch]);
 
   useEffect(() => { if (token) loadContacts(); }, [token, loadContacts]);
@@ -391,15 +402,23 @@ export default function App() {
 
   async function handleDelete(id) {
     if (!window.confirm('Supprimer ce contact ?')) return;
-    await apiFetch(`${API_URL}/contacts/${id}`, { method: 'DELETE' });
-    setContacts(cs => cs.filter(c => c.id !== id));
+    try {
+      const res = await apiFetch(`${API_URL}/contacts/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Erreur lors de la suppression' }));
+        throw new Error(errorData.error || 'Erreur lors de la suppression');
+      }
+      setContacts(cs => cs.filter(c => c.id !== id));
+    } catch (err) {
+      alert('Erreur: ' + err.message);
+    }
   }
 
   function handleExport() {
     const params = new URLSearchParams();
     if (filters.type) params.set('type', filters.type);
     if (filters.from) params.set('from', filters.from);
-    if (filters.to)   params.set('to', filters.to);
+    if (filters.to) params.set('to', filters.to);
     params.set('auth', token);
     window.open(`${API_URL}/export/csv?${params}`, '_blank');
   }
@@ -453,7 +472,11 @@ export default function App() {
             {loading ? <div className="loading">Chargement…</div> : <ContactTable contacts={contacts} onEdit={row => setEditing(row)} onDelete={handleDelete} />}
           </section>
         )}
-        {view === 'stats' && !editing && <section><Dashboard stats={stats} /></section>}
+        {view === 'stats' && !editing && (
+          <section>
+            <Dashboard stats={stats} statsError={statsError} />
+          </section>
+        )}
       </main>
     </div>
   );
