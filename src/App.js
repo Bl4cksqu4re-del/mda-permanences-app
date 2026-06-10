@@ -42,18 +42,13 @@ const MOTIF_LABELS = {
   adhesion: 'Adhésion', activite_artistique: 'Activité artist.', autres: 'Autres'
 };
 
-// ── Utilitaires ────────────────────────────────────────────────────────────────
 function formatDate(d) {
   if (!d) return '';
-  const dd = new Date(d);
-  return dd.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function getMotifs(row) {
-  return MOTIF_FIELDS
-    .filter(f => row[f.key])
-    .map(f => f.label)
-    .join(', ') || '—';
+  return MOTIF_FIELDS.filter(f => row[f.key]).map(f => f.label).join(', ') || '—';
 }
 
 function getIdLabel(row) {
@@ -61,11 +56,64 @@ function getIdLabel(row) {
 }
 
 function getQui(row) {
-  return [row.qui_ck && 'CK', row.qui_kr && 'KR', row.qui_lv && 'LV']
-    .filter(Boolean).join(', ') || '—';
+  return [row.qui_ck && 'CK', row.qui_kr && 'KR', row.qui_lv && 'LV'].filter(Boolean).join(', ') || '—';
 }
 
-// ── Composant CheckPill ────────────────────────────────────────────────────────
+// ── Ecran de login ─────────────────────────────────────────────────────────────
+function LoginScreen({ onLogin }) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      if (!res.ok) { setError('Mot de passe incorrect.'); return; }
+      const { token } = await res.json();
+      onLogin(token);
+    } catch (err) {
+      setError('Impossible de contacter le serveur.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="login-screen">
+      <div className="login-card">
+        <div className="login-logo">MDA</div>
+        <h1 className="login-title">Suivi des permanences</h1>
+        <p className="login-sub">La Maison des Artistes · 2026</p>
+        <form onSubmit={handleSubmit} className="login-form">
+          <div className="field">
+            <label>Mot de passe</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
+              autoFocus
+              required
+            />
+          </div>
+          {error && <p className="form-error">{error}</p>}
+          <button type="submit" className="btn btn--primary btn--full" disabled={loading}>
+            {loading ? 'Connexion…' : 'Se connecter'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── CheckPill ──────────────────────────────────────────────────────────────────
 function CheckPill({ checked, onChange, label, accent }) {
   return (
     <label className={`pill ${checked ? 'pill--on' : ''} ${accent ? 'pill--accent' : ''}`}>
@@ -76,7 +124,7 @@ function CheckPill({ checked, onChange, label, accent }) {
 }
 
 // ── Formulaire de saisie ───────────────────────────────────────────────────────
-function ContactForm({ initial, onSaved, onCancel }) {
+function ContactForm({ initial, onSaved, onCancel, token }) {
   const [form, setForm] = useState(initial || EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -93,7 +141,7 @@ function ContactForm({ initial, onSaved, onCancel }) {
       const url = form.id ? `${API_URL}/contacts/${form.id}` : `${API_URL}/contacts`;
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': token },
         body: JSON.stringify(form)
       });
       if (!res.ok) throw new Error(await res.text());
@@ -131,8 +179,7 @@ function ContactForm({ initial, onSaved, onCancel }) {
         <legend>Identification</legend>
         <div className="pills-row">
           {ID_FIELDS.map(f => (
-            <CheckPill key={f.key} label={f.label}
-              checked={!!form[f.key]} onChange={v => set(f.key, v)} />
+            <CheckPill key={f.key} label={f.label} checked={!!form[f.key]} onChange={v => set(f.key, v)} />
           ))}
         </div>
       </fieldset>
@@ -141,8 +188,7 @@ function ContactForm({ initial, onSaved, onCancel }) {
         <legend>Motif(s)</legend>
         <div className="pills-row">
           {MOTIF_FIELDS.map(f => (
-            <CheckPill key={f.key} label={f.label} accent
-              checked={!!form[f.key]} onChange={v => set(f.key, v)} />
+            <CheckPill key={f.key} label={f.label} accent checked={!!form[f.key]} onChange={v => set(f.key, v)} />
           ))}
         </div>
       </fieldset>
@@ -150,13 +196,11 @@ function ContactForm({ initial, onSaved, onCancel }) {
       <div className="form-row">
         <div className="field">
           <label>E-mail</label>
-          <input type="email" value={form.mail}
-            onChange={e => set('mail', e.target.value)} placeholder="artiste@example.com" />
+          <input type="email" value={form.mail} onChange={e => set('mail', e.target.value)} placeholder="artiste@example.com" />
         </div>
         <div className="field">
           <label>Téléphone</label>
-          <input type="text" value={form.telephone}
-            onChange={e => set('telephone', e.target.value)} placeholder="06 XX XX XX XX" />
+          <input type="text" value={form.telephone} onChange={e => set('telephone', e.target.value)} placeholder="06 XX XX XX XX" />
         </div>
       </div>
 
@@ -171,34 +215,26 @@ function ContactForm({ initial, onSaved, onCancel }) {
 
       <div className="field">
         <label>Remarques / Thèmes</label>
-        <textarea rows={3} value={form.remarques}
-          onChange={e => set('remarques', e.target.value)}
-          placeholder="Résumé de l'échange…" />
+        <textarea rows={3} value={form.remarques} onChange={e => set('remarques', e.target.value)} placeholder="Résumé de l'échange…" />
       </div>
 
       <div className="field">
         <label>Suivi</label>
-        <textarea rows={2} value={form.suivi}
-          onChange={e => set('suivi', e.target.value)}
-          placeholder="À rappeler, transmis à…" />
+        <textarea rows={2} value={form.suivi} onChange={e => set('suivi', e.target.value)} placeholder="À rappeler, transmis à…" />
       </div>
 
       <div className="form-row">
         <div className="field">
           <label>Comment nous ont-ils connu ?</label>
-          <input type="text" value={form.comment_connu}
-            onChange={e => set('comment_connu', e.target.value)}
-            placeholder="Cercle Pro, Internet…" />
+          <input type="text" value={form.comment_connu} onChange={e => set('comment_connu', e.target.value)} placeholder="Cercle Pro, Internet…" />
         </div>
         <div className="field field--center">
           <label>Newsletter</label>
-          <CheckPill label="Inscription NL" checked={!!form.newsletter}
-            onChange={v => set('newsletter', v)} />
+          <CheckPill label="Inscription NL" checked={!!form.newsletter} onChange={v => set('newsletter', v)} />
         </div>
       </div>
 
       {error && <p className="form-error">{error}</p>}
-
       <div className="form-actions">
         {onCancel && <button type="button" className="btn btn--ghost" onClick={onCancel}>Annuler</button>}
         <button type="submit" className="btn btn--primary" disabled={saving}>
@@ -209,11 +245,9 @@ function ContactForm({ initial, onSaved, onCancel }) {
   );
 }
 
-// ── Tableau des contacts ───────────────────────────────────────────────────────
+// ── Tableau ────────────────────────────────────────────────────────────────────
 function ContactTable({ contacts, onEdit, onDelete }) {
-  if (!contacts.length) return (
-    <div className="empty-state">Aucun contact enregistré pour cette période.</div>
-  );
+  if (!contacts.length) return <div className="empty-state">Aucun contact enregistré pour cette période.</div>;
   return (
     <div className="table-wrapper">
       <table className="contacts-table">
@@ -230,9 +264,7 @@ function ContactTable({ contacts, onEdit, onDelete }) {
               <td><span className={`badge badge--${row.type.toLowerCase()}`}>{row.type}</span></td>
               <td className="td-profil">{getIdLabel(row)}</td>
               <td className="td-motif">{getMotifs(row)}</td>
-              <td className="td-mail">
-                {row.mail ? <a href={`mailto:${row.mail}`}>{row.mail}</a> : '—'}
-              </td>
+              <td className="td-mail">{row.mail ? <a href={`mailto:${row.mail}`}>{row.mail}</a> : '—'}</td>
               <td>{row.telephone || '—'}</td>
               <td>{getQui(row)}</td>
               <td className="td-remarques" title={row.remarques}>{row.remarques || '—'}</td>
@@ -249,7 +281,7 @@ function ContactTable({ contacts, onEdit, onDelete }) {
   );
 }
 
-// ── Dashboard stats ────────────────────────────────────────────────────────────
+// ── Dashboard ──────────────────────────────────────────────────────────────────
 function StatBar({ label, value, max, color }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
@@ -265,14 +297,12 @@ function StatBar({ label, value, max, color }) {
 
 function Dashboard({ stats }) {
   if (!stats) return <div className="loading">Chargement des statistiques…</div>;
-
   const total = (stats.byType || []).reduce((s, r) => s + parseInt(r.n), 0);
   const tel = stats.byType?.find(r => r.type === 'TEL')?.n || 0;
   const pres = stats.byType?.find(r => r.type === 'PRES')?.n || 0;
   const motifs = stats.byMotif || {};
   const maxMotif = Math.max(...Object.values(motifs).map(Number));
   const qui = stats.byQui || {};
-
   return (
     <div className="dashboard">
       <div className="stats-cards">
@@ -280,14 +310,12 @@ function Dashboard({ stats }) {
         <div className="stat-card stat-card--tel"><span className="stat-card__val">{tel}</span><span className="stat-card__label">📞 Téléphone</span></div>
         <div className="stat-card stat-card--pres"><span className="stat-card__val">{pres}</span><span className="stat-card__label">🤝 Présentiel</span></div>
       </div>
-
       <div className="stats-section">
         <h3>Motifs</h3>
         {Object.entries(MOTIF_LABELS).map(([k, l]) => (
           <StatBar key={k} label={l} value={Number(motifs[k]) || 0} max={maxMotif} color="var(--blue)" />
         ))}
       </div>
-
       <div className="stats-section">
         <h3>Par conseiller·ère</h3>
         {[['ck','CK'],['kr','KR'],['lv','LV']].map(([k,l]) => (
@@ -300,20 +328,30 @@ function Dashboard({ stats }) {
 
 // ── App principale ─────────────────────────────────────────────────────────────
 export default function App() {
-  const [view, setView] = useState('list'); // list | new | stats
+  const [token, setToken] = useState(() => sessionStorage.getItem('mda_token') || '');
+  const [view, setView] = useState('list');
   const [contacts, setContacts] = useState([]);
   const [stats, setStats] = useState(null);
   const [editing, setEditing] = useState(null);
   const [filters, setFilters] = useState({ type: '', from: '', to: '' });
   const [loading, setLoading] = useState(false);
-  const [apiOk, setApiOk] = useState(null);
 
-  // Check API
-  useEffect(() => {
-    fetch(`${API_URL}/health`)
-      .then(r => r.ok ? setApiOk(true) : setApiOk(false))
-      .catch(() => setApiOk(false));
-  }, []);
+  function handleLogin(t) {
+    sessionStorage.setItem('mda_token', t);
+    setToken(t);
+  }
+
+  function handleLogout() {
+    sessionStorage.removeItem('mda_token');
+    setToken('');
+  }
+
+  const apiFetch = useCallback((url, options = {}) => {
+    return fetch(url, {
+      ...options,
+      headers: { ...(options.headers || {}), 'Authorization': token }
+    });
+  }, [token]);
 
   const loadContacts = useCallback(async () => {
     setLoading(true);
@@ -322,38 +360,38 @@ export default function App() {
     if (filters.from) params.set('from', filters.from);
     if (filters.to)   params.set('to', filters.to);
     try {
-      const res = await fetch(`${API_URL}/contacts?${params}`);
+      const res = await apiFetch(`${API_URL}/contacts?${params}`);
+      if (res.status === 401) { handleLogout(); return; }
       setContacts(await res.json());
     } catch(e) { console.error(e); }
     finally { setLoading(false); }
-  }, [filters]);
+  }, [filters, apiFetch]);
 
   const loadStats = useCallback(async () => {
     const params = new URLSearchParams();
     if (filters.from) params.set('from', filters.from);
     if (filters.to)   params.set('to', filters.to);
     try {
-      const res = await fetch(`${API_URL}/stats?${params}`);
+      const res = await apiFetch(`${API_URL}/stats?${params}`);
       setStats(await res.json());
     } catch(e) { console.error(e); }
-  }, [filters]);
+  }, [filters, apiFetch]);
 
-  useEffect(() => { loadContacts(); }, [loadContacts]);
-  useEffect(() => { if (view === 'stats') loadStats(); }, [view, loadStats]);
+  useEffect(() => { if (token) loadContacts(); }, [token, loadContacts]);
+  useEffect(() => { if (token && view === 'stats') loadStats(); }, [token, view, loadStats]);
+
+  if (!token) return <LoginScreen onLogin={handleLogin} />;
 
   function handleSaved(contact, isUpdate) {
-    if (isUpdate) {
-      setContacts(cs => cs.map(c => c.id === contact.id ? contact : c));
-    } else {
-      setContacts(cs => [contact, ...cs]);
-    }
+    if (isUpdate) setContacts(cs => cs.map(c => c.id === contact.id ? contact : c));
+    else setContacts(cs => [contact, ...cs]);
     setEditing(null);
     setView('list');
   }
 
   async function handleDelete(id) {
     if (!window.confirm('Supprimer ce contact ?')) return;
-    await fetch(`${API_URL}/contacts/${id}`, { method: 'DELETE' });
+    await apiFetch(`${API_URL}/contacts/${id}`, { method: 'DELETE' });
     setContacts(cs => cs.filter(c => c.id !== id));
   }
 
@@ -362,6 +400,7 @@ export default function App() {
     if (filters.type) params.set('type', filters.type);
     if (filters.from) params.set('from', filters.from);
     if (filters.to)   params.set('to', filters.to);
+    params.set('auth', token);
     window.open(`${API_URL}/export/csv?${params}`, '_blank');
   }
 
@@ -375,19 +414,11 @@ export default function App() {
             <div className="app-header__sub">La Maison des Artistes · 2026</div>
           </div>
         </div>
-        {apiOk === false && (
-          <div className="api-warning">⚠️ API non joignable — vérifier la connexion au backend</div>
-        )}
         <nav className="app-nav">
-          <button className={`nav-btn ${view === 'list' ? 'nav-btn--on' : ''}`} onClick={() => { setEditing(null); setView('list'); }}>
-            Liste
-          </button>
-          <button className={`nav-btn ${view === 'new' ? 'nav-btn--on' : ''}`} onClick={() => { setEditing(null); setView('new'); }}>
-            + Nouveau
-          </button>
-          <button className={`nav-btn ${view === 'stats' ? 'nav-btn--on' : ''}`} onClick={() => setView('stats')}>
-            Statistiques
-          </button>
+          <button className={`nav-btn ${view === 'list' ? 'nav-btn--on' : ''}`} onClick={() => { setEditing(null); setView('list'); }}>Liste</button>
+          <button className={`nav-btn ${view === 'new' ? 'nav-btn--on' : ''}`} onClick={() => { setEditing(null); setView('new'); }}>+ Nouveau</button>
+          <button className={`nav-btn ${view === 'stats' ? 'nav-btn--on' : ''}`} onClick={() => setView('stats')}>Statistiques</button>
+          <button className="nav-btn nav-btn--logout" onClick={handleLogout} title="Se déconnecter">⎋ Déconnexion</button>
         </nav>
       </header>
 
@@ -397,11 +428,9 @@ export default function App() {
           <option value="TEL">Téléphone</option>
           <option value="PRES">Présentiel</option>
         </select>
-        <input type="date" value={filters.from} onChange={e => setFilters(f => ({ ...f, from: e.target.value }))} placeholder="Depuis" />
-        <input type="date" value={filters.to}   onChange={e => setFilters(f => ({ ...f, to: e.target.value }))} placeholder="Jusqu'à" />
-        <button className="btn btn--ghost btn--sm" onClick={() => setFilters({ type: '', from: '', to: '' })}>
-          Réinitialiser
-        </button>
+        <input type="date" value={filters.from} onChange={e => setFilters(f => ({ ...f, from: e.target.value }))} />
+        <input type="date" value={filters.to}   onChange={e => setFilters(f => ({ ...f, to: e.target.value }))} />
+        <button className="btn btn--ghost btn--sm" onClick={() => setFilters({ type: '', from: '', to: '' })}>Réinitialiser</button>
         <button className="btn btn--export btn--sm" onClick={handleExport}>⬇ Export CSV</button>
         <span className="filter-count">{contacts.length} contact{contacts.length > 1 ? 's' : ''}</span>
       </div>
@@ -410,33 +439,22 @@ export default function App() {
         {view === 'new' && !editing && (
           <section className="section-form">
             <h2>Nouveau contact</h2>
-            <ContactForm onSaved={handleSaved} onCancel={() => setView('list')} />
+            <ContactForm token={token} onSaved={handleSaved} onCancel={() => setView('list')} />
           </section>
         )}
-
         {editing && (
           <section className="section-form">
             <h2>Modifier le contact</h2>
-            <ContactForm initial={editing} onSaved={handleSaved} onCancel={() => { setEditing(null); setView('list'); }} />
+            <ContactForm token={token} initial={editing} onSaved={handleSaved} onCancel={() => { setEditing(null); setView('list'); }} />
           </section>
         )}
-
         {view === 'list' && !editing && (
           <section>
-            {loading
-              ? <div className="loading">Chargement…</div>
-              : <ContactTable contacts={contacts} onEdit={row => { setEditing(row); }} onDelete={handleDelete} />
-            }
+            {loading ? <div className="loading">Chargement…</div> : <ContactTable contacts={contacts} onEdit={row => setEditing(row)} onDelete={handleDelete} />}
           </section>
         )}
-
-        {view === 'stats' && !editing && (
-          <section>
-            <Dashboard stats={stats} />
-          </section>
-        )}
+        {view === 'stats' && !editing && <section><Dashboard stats={stats} /></section>}
       </main>
     </div>
   );
 }
-
