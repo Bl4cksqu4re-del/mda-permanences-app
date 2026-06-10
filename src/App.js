@@ -408,7 +408,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <div className="app-header__brand">
-          <span className="app-header__logo">MDA</span>
+          <span className="app-header__logo" onClick={() => { setEditing(null); setView('list'); }} style={{cursor:'pointer'}}>MDA</span>
           <div>
             <div className="app-header__title">Suivi des permanences</div>
             <div className="app-header__sub">La Maison des Artistes · 2026</div>
