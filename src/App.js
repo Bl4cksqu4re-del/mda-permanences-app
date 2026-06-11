@@ -231,17 +231,25 @@ function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifA
           <legend>Motifs personnalisés</legend>
           <div className="pills-row">
             {customMotifs.map(m => (
-              <label key={m.id} className={`pill ${(form.motifs_custom || []).includes(m.id) ? 'pill--on' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={(form.motifs_custom || []).includes(m.id)}
-                  onChange={e => {
-                    const ids = form.motifs_custom || [];
-                    set('motifs_custom', e.target.checked ? [...ids, m.id] : ids.filter(id => id !== m.id));
-                  }}
-                />
-                {m.label}
-              </label>
+              <div key={m.id} className="pill-with-delete">
+                <label className={`pill ${(form.motifs_custom || []).includes(m.id) ? 'pill--on' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={(form.motifs_custom || []).includes(m.id)}
+                    onChange={e => {
+                      const ids = form.motifs_custom || [];
+                      set('motifs_custom', e.target.checked ? [...ids, m.id] : ids.filter(id => id !== m.id));
+                    }}
+                  />
+                  {m.label}
+                </label>
+                <button
+                  type="button"
+                  className="pill-delete"
+                  title="Supprimer ce motif"
+                  onClick={() => onMotifDeleted(m.id)}
+                >×</button>
+              </div>
             ))}
           </div>
         </fieldset>
@@ -400,6 +408,7 @@ export default function App() {
   const [editing, setEditing] = useState(null);
   const [customMotifs, setCustomMotifs] = useState([]);
   const [filters, setFilters] = useState({ type: '', from: '', to: '' });
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
 
   function handleLogin(t) { sessionStorage.setItem('mda_token', t); setToken(t); }
@@ -444,6 +453,15 @@ export default function App() {
 
   useEffect(() => { if (token) { loadContacts(); loadCustomMotifs(); } }, [token, loadContacts, loadCustomMotifs]);
   useEffect(() => { if (token && view === 'stats') loadStats(); }, [token, view, loadStats]);
+
+  const filteredContacts = search.trim()
+    ? contacts.filter(c => {
+        const q = search.toLowerCase();
+        return (c.prenom || '').toLowerCase().includes(q)
+            || (c.nom || '').toLowerCase().includes(q)
+            || (c.mail || '').toLowerCase().includes(q);
+      })
+    : contacts;
 
   if (!token) return <LoginScreen onLogin={handleLogin} />;
 
@@ -498,6 +516,13 @@ export default function App() {
       </header>
 
       <div className="app-filters">
+        <input
+          type="text"
+          className="filter-search"
+          placeholder="🔍 Rechercher par nom, prénom, e-mail…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
         <select value={filters.type} onChange={e => setFilters(f => ({ ...f, type: e.target.value }))}>
           <option value="">Tous types</option>
           <option value="TEL">Téléphone</option>
@@ -505,9 +530,9 @@ export default function App() {
         </select>
         <input type="date" value={filters.from} onChange={e => setFilters(f => ({ ...f, from: e.target.value }))} />
         <input type="date" value={filters.to}   onChange={e => setFilters(f => ({ ...f, to: e.target.value }))} />
-        <button className="btn btn--ghost btn--sm" onClick={() => setFilters({ type: '', from: '', to: '' })}>Réinitialiser</button>
+        <button className="btn btn--ghost btn--sm" onClick={() => { setFilters({ type: '', from: '', to: '' }); setSearch(''); }}>Réinitialiser</button>
         <button className="btn btn--export btn--sm" onClick={handleExport}>⬇ Export CSV</button>
-        <span className="filter-count">{contacts.length} contact{contacts.length > 1 ? 's' : ''}</span>
+        <span className="filter-count">{filteredContacts.length} contact{filteredContacts.length > 1 ? 's' : ''}</span>
       </div>
 
       <main className="app-main">
@@ -525,7 +550,7 @@ export default function App() {
         )}
         {view === 'list' && !editing && (
           <section>
-            {loading ? <div className="loading">Chargement…</div> : <ContactTable contacts={contacts} customMotifs={customMotifs} onEdit={row => setEditing(row)} onDelete={handleDelete} />}
+            {loading ? <div className="loading">Chargement…</div> : <ContactTable contacts={filteredContacts} customMotifs={customMotifs} onEdit={row => setEditing(row)} onDelete={handleDelete} />}
           </section>
         )}
         {view === 'stats' && !editing && <section><Dashboard stats={stats} /></section>}
