@@ -83,6 +83,21 @@
 </header>
 
 <main>
+  <!-- Login -->
+  <div id="login-screen" style="display:none;align-items:center;justify-content:center;min-height:60vh;flex-direction:column;gap:16px">
+    <div style="background:white;border-radius:12px;padding:32px;max-width:360px;width:100%;box-shadow:0 4px 20px rgba(0,0,0,.1)">
+      <h2 style="margin-bottom:20px;font-size:18px">Connexion</h2>
+      <form id="login-form" style="display:flex;flex-direction:column;gap:12px">
+        <input id="login-user" type="text" placeholder="Identifiant" style="border:1.5px solid #E2E2EB;border-radius:10px;padding:12px 14px;font-size:15px;font-family:inherit" required />
+        <input id="login-pwd" type="password" placeholder="Mot de passe" style="border:1.5px solid #E2E2EB;border-radius:10px;padding:12px 14px;font-size:15px;font-family:inherit" required />
+        <div id="login-err" style="display:none;color:#c53030;font-size:13px;background:#fff5f5;padding:8px 12px;border-radius:8px"></div>
+        <button type="submit" style="background:#0004F2;color:white;border:none;border-radius:10px;padding:13px;font-size:15px;font-family:inherit;font-weight:700;cursor:pointer">Se connecter</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" style="display:none">
   <div class="top-bar">
     <h2>Statistiques d'appels</h2>
     <input type="date" id="from" />
@@ -101,16 +116,40 @@
   <div id="content">
     <div class="loading">Chargement…</div>
   </div>
+  </div><!-- fin dashboard -->
 </main>
 
 <footer>Tous droits réservés © Bl4cksquare · La Maison des Artistes · art. L111-1 du CPI</footer>
 
 <script>
   const API_URL = 'https://mda-permanences-api.onrender.com';
-  const token = sessionStorage.getItem('mda_token');
+  let token = sessionStorage.getItem('mda_token') || localStorage.getItem('mda_token');
 
-  if (!token) {
-    window.location.href = '/';
+  async function login(username, password) {
+    const res = await fetch(`${API_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    if (!res.ok) throw new Error('Identifiants incorrects');
+    const { token: t } = await res.json();
+    token = t;
+    sessionStorage.setItem('mda_token', t);
+    localStorage.setItem('mda_token', t);
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    checkStatus();
+  }
+
+  function checkToken() {
+    if (!token) {
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('dashboard').style.display = 'none';
+    } else {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      checkStatus();
+    }
   }
 
   function fmt(sec) {
@@ -261,7 +300,21 @@
   const weekAgo = new Date(now - 7*24*60*60*1000);
   document.getElementById('from').value = weekAgo.toISOString().slice(0,10);
 
-  checkStatus();
+  document.getElementById('login-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const u = document.getElementById('login-user').value;
+    const p = document.getElementById('login-pwd').value;
+    const err = document.getElementById('login-err');
+    try {
+      await login(u, p);
+      err.style.display = 'none';
+    } catch(e) {
+      err.textContent = e.message;
+      err.style.display = 'block';
+    }
+  });
+
+  checkToken();
 </script>
 </body>
 </html>
