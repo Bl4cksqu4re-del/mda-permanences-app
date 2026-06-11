@@ -566,3 +566,33 @@ body.dark .toggle { background: #252836; border-color: #2a2d3e; color: #8888a8; 
   text-transform: uppercase;
   letter-spacing: .5px;
 }
+
+/* Rappel CSV Orange Business */
+.rappel-csv-banner {
+  display: flex; align-items: center; gap: 16px;
+  background: #e8f4fd; border: 1.5px solid var(--azure);
+  color: var(--charbon); padding: 16px 20px;
+  border-radius: var(--radius); margin-bottom: 16px;
+  animation: banner-in .3s ease;
+}
+.rappel-csv-banner--urgent {
+  background: #fff5f5; border-color: #e53e3e;
+}
+.rappel-csv-banner__icon { font-size: 24px; flex-shrink: 0; }
+.rappel-csv-banner__body { flex: 1; }
+.rappel-csv-banner__title { font-size: 15px; font-weight: 800; margin-bottom: 4px; }
+.rappel-csv-banner--urgent .rappel-csv-banner__title { color: #c53030; }
+.rappel-csv-banner__detail { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.rappel-csv-banner__btn {
+  background: var(--charbon); color: white; border: none;
+  padding: 9px 16px; border-radius: 20px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  white-space: nowrap; text-decoration: none;
+  display: inline-flex; align-items: center;
+  transition: background .15s;
+}
+.rappel-csv-banner__btn:hover { background: #2d3248; }
+.rappel-csv-banner__btn--link { background: var(--azure); }
+.rappel-csv-banner__btn--link:hover { filter: brightness(.9); }
+.rappel-csv-banner--urgent .rappel-csv-banner__btn { background: #e53e3e; }
+.rappel-csv-banner--urgent .rappel-csv-banner__btn:hover { background: #c53030; }
