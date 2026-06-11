@@ -451,8 +451,16 @@ export default function App() {
     } catch(e) { console.error(e); }
   }, [filters, apiFetch]);
 
+  const [toast, setToast] = useState(null);
+
+  function showToast(msg, type = 'success') {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  }
+
   useEffect(() => { if (token) { loadContacts(); loadCustomMotifs(); } }, [token, loadContacts, loadCustomMotifs]);
   useEffect(() => { if (token && view === 'stats') loadStats(); }, [token, view, loadStats]);
+  useEffect(() => { if (token) loadContacts(); }, [filters]);
 
   const filteredContacts = search.trim()
     ? contacts.filter(c => {
@@ -470,12 +478,14 @@ export default function App() {
     else setContacts(cs => [contact, ...cs]);
     setEditing(null);
     setView('list');
+    showToast(isUpdate ? 'Contact mis à jour' : 'Contact enregistré');
   }
 
   async function handleDelete(id) {
     if (!window.confirm('Supprimer ce contact ?')) return;
     await apiFetch(`${API_URL}/contacts/${id}`, { method: 'DELETE' });
     setContacts(cs => cs.filter(c => c.id !== id));
+    showToast('Contact supprimé', 'error');
   }
 
   function handleMotifAdded(m) {
@@ -499,6 +509,7 @@ export default function App() {
 
   return (
     <div className="app">
+      {toast && <div className={`toast toast--${toast.type}`}>{toast.msg}</div>}
       <header className="app-header">
         <div className="app-header__brand">
           <span className="app-header__logo" onClick={() => { setEditing(null); setView('list'); }} style={{cursor:'pointer'}}>MDA</span>
