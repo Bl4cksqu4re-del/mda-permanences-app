@@ -369,3 +369,54 @@ fieldset legend { font-size: 12px; font-weight: 700; text-transform: uppercase; 
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* User menu */
+.user-menu-wrap { position: relative; }
+.user-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: white;
+  border: none;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.user-avatar:hover { background: #0003cc; }
+.user-menu {
+  position: absolute; top: 44px; right: 0;
+  background: white; border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0,0,0,.15);
+  border: 1px solid var(--border);
+  min-width: 200px; z-index: 200;
+  overflow: hidden;
+}
+.user-menu__name { padding: 12px 16px; font-weight: 700; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--border); }
+.user-menu__item { display: block; width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; font-size: 14px; font-family: inherit; cursor: pointer; color: var(--text); }
+.user-menu__item:hover { background: var(--off); }
+.user-menu__item--logout { color: #e53e3e; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,.4);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.modal {
+  background: white; border-radius: 12px; padding: 32px;
+  width: 100%; max-width: 440px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
+}
+.modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+.modal-form { display: flex; flex-direction: column; gap: 14px; }
+
+/* Admin */
+.admin-panel { display: flex; flex-direction: column; gap: 28px; max-width: 860px; }
+.admin-panel h2 { font-size: 20px; font-weight: 700; color: var(--charbon); }
+.admin-section { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 24px; }
+.admin-section h3 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 14px; }
+.admin-users { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.admin-form { display: flex; flex-direction: column; gap: 14px; }
