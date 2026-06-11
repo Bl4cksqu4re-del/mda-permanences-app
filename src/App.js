@@ -43,6 +43,12 @@ const MOTIF_LABELS = {
   adhesion: 'Adhésion', activite_artistique: 'Activité artist.', autres: 'Autres'
 };
 
+const CONSEILLERS = [
+  { key: 'qui_ck', label: 'CK' }, { key: 'qui_kr', label: 'KR' },
+  { key: 'qui_lv', label: 'LV' }, { key: 'qui_vc', label: 'VC' },
+  { key: 'qui_cc', label: 'CC' },
+];
+
 function formatDate(d) {
   if (!d) return '';
   return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -62,7 +68,7 @@ function getIdLabel(row) {
 }
 
 function getQui(row) {
-  return [row.qui_ck && 'CK', row.qui_kr && 'KR', row.qui_lv && 'LV', row.qui_vc && 'VC', row.qui_cc && 'CC'].filter(Boolean).join(', ') || '—';
+  return CONSEILLERS.filter(c => row[c.key]).map(c => c.label).join(', ') || '—';
 }
 
 function Footer() {
@@ -74,6 +80,7 @@ function Footer() {
 }
 
 function LoginScreen({ onLogin }) {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -85,11 +92,11 @@ function LoginScreen({ onLogin }) {
       const res = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
+        body: JSON.stringify({ username, password })
       });
-      if (!res.ok) { setError('Mot de passe incorrect.'); return; }
-      const { token } = await res.json();
-      onLogin(token);
+      if (!res.ok) { const d = await res.json(); setError(d.error || 'Erreur de connexion'); return; }
+      const { token, user } = await res.json();
+      onLogin(token, user);
     } catch { setError('Impossible de contacter le serveur.'); }
     finally { setLoading(false); }
   }
@@ -102,8 +109,12 @@ function LoginScreen({ onLogin }) {
         <p className="login-sub">La Maison des Artistes · 2026</p>
         <form onSubmit={handleSubmit} className="login-form">
           <div className="field">
+            <label>Identifiant</label>
+            <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="prenom.nom" autoFocus required />
+          </div>
+          <div className="field">
             <label>Mot de passe</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" autoFocus required />
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
           </div>
           {error && <p className="form-error">{error}</p>}
           <button type="submit" className="btn btn--primary btn--full" disabled={loading}>
@@ -112,6 +123,155 @@ function LoginScreen({ onLogin }) {
         </form>
       </div>
       <Footer />
+    </div>
+  );
+}
+
+function ChangePasswordModal({ token, onClose, showToast }) {
+  const [form, setForm] = useState({ current: '', next: '', confirm: '' });
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (form.next !== form.confirm) { setError('Les mots de passe ne correspondent pas'); return; }
+    if (form.next.length < 6) { setError('Minimum 6 caractères'); return; }
+    setSaving(true); setError('');
+    try {
+      const res = await fetch(`${API_URL}/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': token },
+        body: JSON.stringify({ current_password: form.current, new_password: form.next })
+      });
+      const d = await res.json();
+      if (!res.ok) { setError(d.error); return; }
+      showToast('Mot de passe modifié');
+      onClose();
+    } catch { setError('Erreur serveur'); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <h2>Changer mon mot de passe</h2>
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="field"><label>Mot de passe actuel</label><input type="password" value={form.current} onChange={e => setForm(f => ({...f, current: e.target.value}))} required /></div>
+          <div className="field"><label>Nouveau mot de passe</label><input type="password" value={form.next} onChange={e => setForm(f => ({...f, next: e.target.value}))} required /></div>
+          <div className="field"><label>Confirmer</label><input type="password" value={form.confirm} onChange={e => setForm(f => ({...f, confirm: e.target.value}))} required /></div>
+          {error && <p className="form-error">{error}</p>}
+          <div className="form-actions">
+            <button type="button" className="btn btn--ghost" onClick={onClose}>Annuler</button>
+            <button type="submit" className="btn btn--primary" disabled={saving}>{saving ? 'Enregistrement…' : 'Modifier'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function AdminPanel({ token, showToast }) {
+  const [users, setUsers] = useState([]);
+  const [form, setForm] = useState({ username: '', password: '', display_name: '', initiales: '', is_admin: false });
+  const [resetId, setResetId] = useState(null);
+  const [resetPwd, setResetPwd] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetch(`${API_URL}/users`, { headers: { 'Authorization': token } })
+      .then(r => r.json()).then(setUsers).catch(console.error);
+  }, [token]);
+
+  async function handleAdd(e) {
+    e.preventDefault(); setError('');
+    try {
+      const res = await fetch(`${API_URL}/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': token },
+        body: JSON.stringify(form)
+      });
+      const d = await res.json();
+      if (!res.ok) { setError(d.error); return; }
+      setUsers(us => [...us, d]);
+      setForm({ username: '', password: '', display_name: '', initiales: '', is_admin: false });
+      showToast('Compte créé');
+    } catch { setError('Erreur serveur'); }
+  }
+
+  async function handleDelete(id) {
+    if (!window.confirm('Supprimer ce compte ?')) return;
+    await fetch(`${API_URL}/users/${id}`, { method: 'DELETE', headers: { 'Authorization': token } });
+    setUsers(us => us.filter(u => u.id !== id));
+    showToast('Compte supprimé', 'error');
+  }
+
+  async function handleReset(e) {
+    e.preventDefault();
+    if (!resetPwd || resetPwd.length < 6) { setError('Minimum 6 caractères'); return; }
+    const res = await fetch(`${API_URL}/users/${resetId}/reset-password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': token },
+      body: JSON.stringify({ new_password: resetPwd })
+    });
+    if (res.ok) { showToast('Mot de passe réinitialisé'); setResetId(null); setResetPwd(''); }
+  }
+
+  return (
+    <div className="admin-panel">
+      <h2>Gestion des comptes</h2>
+
+      <div className="admin-users">
+        <table className="contacts-table">
+          <thead><tr><th>Identifiant</th><th>Nom</th><th>Initiales</th><th>Admin</th><th></th></tr></thead>
+          <tbody>
+            {users.map(u => (
+              <tr key={u.id}>
+                <td>{u.username}</td>
+                <td>{u.display_name}</td>
+                <td><span className="badge badge--tel">{u.initiales}</span></td>
+                <td>{u.is_admin ? '✓' : ''}</td>
+                <td className="td-actions">
+                  <button className="btn-icon" onClick={() => { setResetId(u.id); setResetPwd(''); }} title="Réinitialiser le mot de passe">🔑</button>
+                  <button className="btn-icon btn-icon--del" onClick={() => handleDelete(u.id)} title="Supprimer">🗑️</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {resetId && (
+        <div className="admin-section">
+          <h3>Réinitialiser le mot de passe</h3>
+          <form onSubmit={handleReset} className="motif-add">
+            <input type="password" value={resetPwd} onChange={e => setResetPwd(e.target.value)} placeholder="Nouveau mot de passe" minLength={6} required />
+            <button type="submit" className="btn btn--sm btn--primary">Enregistrer</button>
+            <button type="button" className="btn btn--sm btn--ghost" onClick={() => setResetId(null)}>Annuler</button>
+          </form>
+        </div>
+      )}
+
+      <div className="admin-section">
+        <h3>Ajouter un compte</h3>
+        <form onSubmit={handleAdd} className="admin-form">
+          <div className="form-row">
+            <div className="field"><label>Identifiant</label><input type="text" value={form.username} onChange={e => setForm(f => ({...f, username: e.target.value}))} placeholder="prenom.nom" required /></div>
+            <div className="field"><label>Mot de passe</label><input type="password" value={form.password} onChange={e => setForm(f => ({...f, password: e.target.value}))} placeholder="Min. 6 caractères" required /></div>
+          </div>
+          <div className="form-row">
+            <div className="field"><label>Nom complet</label><input type="text" value={form.display_name} onChange={e => setForm(f => ({...f, display_name: e.target.value}))} placeholder="Prénom Nom" required /></div>
+            <div className="field"><label>Initiales</label><input type="text" value={form.initiales} onChange={e => setForm(f => ({...f, initiales: e.target.value.toUpperCase()}))} placeholder="XX" maxLength={5} required /></div>
+          </div>
+          <label className="pill" style={{width:'fit-content'}}>
+            <input type="checkbox" checked={form.is_admin} onChange={e => setForm(f => ({...f, is_admin: e.target.checked}))} />
+            Administrateur
+          </label>
+          {error && <p className="form-error">{error}</p>}
+          <div className="form-actions">
+            <button type="submit" className="btn btn--primary">Créer le compte</button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -125,8 +285,16 @@ function CheckPill({ checked, onChange, label, accent }) {
   );
 }
 
-function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifAdded, onMotifDeleted }) {
-  const [form, setForm] = useState(initial ? { ...initial, motifs_custom: initial.motifs_custom || [] } : EMPTY_FORM);
+function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifAdded, onMotifDeleted, currentUser }) {
+  const initForm = () => {
+    const base = initial ? { ...initial, motifs_custom: initial.motifs_custom || [] } : { ...EMPTY_FORM };
+    if (!initial && currentUser?.initiales) {
+      const key = `qui_${currentUser.initiales.toLowerCase()}`;
+      if (key in base) base[key] = true;
+    }
+    return base;
+  };
+  const [form, setForm] = useState(initForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [newMotif, setNewMotif] = useState('');
@@ -144,17 +312,12 @@ function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifA
         headers: { 'Content-Type': 'application/json', 'Authorization': token },
         body: JSON.stringify({ label: newMotif })
       });
-      if (res.status === 401) {
-        console.error('401 - Token invalide ou expiré');
-        // Logout manuel n'est pas possible ici, mais le logout global se déclenchera au prochain appel
-        throw new Error('Authentification échouée. Veuillez vous reconnecter.');
-      }
+      if (res.status === 401) throw new Error('Authentification échouée. Veuillez vous reconnecter.');
       if (!res.ok) throw new Error(await res.text());
       const m = await res.json();
       onMotifAdded(m);
       setNewMotif('');
     } catch (err) {
-      console.error('Erreur handleAddMotif:', err);
       alert('Erreur: ' + err.message);
     } finally {
       setAddingMotif(false);
@@ -185,21 +348,11 @@ function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifA
   return (
     <form className="contact-form" onSubmit={handleSubmit}>
       <div className="form-row">
-        <div className="field">
-          <label>Prénom</label>
-          <input type="text" value={form.prenom} onChange={e => set('prenom', e.target.value)} placeholder="Prénom de l'artiste" />
-        </div>
-        <div className="field">
-          <label>Nom</label>
-          <input type="text" value={form.nom} onChange={e => set('nom', e.target.value)} placeholder="Nom de l'artiste" />
-        </div>
+        <div className="field"><label>Prénom</label><input type="text" value={form.prenom} onChange={e => set('prenom', e.target.value)} placeholder="Prénom de l'artiste" /></div>
+        <div className="field"><label>Nom</label><input type="text" value={form.nom} onChange={e => set('nom', e.target.value)} placeholder="Nom de l'artiste" /></div>
       </div>
-
       <div className="form-row form-row--top">
-        <div className="field">
-          <label>Date</label>
-          <input type="date" value={form.date} onChange={e => set('date', e.target.value)} required />
-        </div>
+        <div className="field"><label>Date</label><input type="date" value={form.date} onChange={e => set('date', e.target.value)} required /></div>
         <div className="field">
           <label>Type</label>
           <div className="toggle-group">
@@ -211,21 +364,14 @@ function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifA
           </div>
         </div>
       </div>
-
       <fieldset>
         <legend>Identification</legend>
-        <div className="pills-row">
-          {ID_FIELDS.map(f => <CheckPill key={f.key} label={f.label} checked={!!form[f.key]} onChange={v => set(f.key, v)} />)}
-        </div>
+        <div className="pills-row">{ID_FIELDS.map(f => <CheckPill key={f.key} label={f.label} checked={!!form[f.key]} onChange={v => set(f.key, v)} />)}</div>
       </fieldset>
-
       <fieldset>
         <legend>Motifs standards</legend>
-        <div className="pills-row">
-          {MOTIF_FIELDS.map(f => <CheckPill key={f.key} label={f.label} accent checked={!!form[f.key]} onChange={v => set(f.key, v)} />)}
-        </div>
+        <div className="pills-row">{MOTIF_FIELDS.map(f => <CheckPill key={f.key} label={f.label} accent checked={!!form[f.key]} onChange={v => set(f.key, v)} />)}</div>
       </fieldset>
-
       {customMotifs.length > 0 && (
         <fieldset>
           <legend>Motifs personnalisés</legend>
@@ -233,86 +379,43 @@ function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifA
             {customMotifs.map(m => (
               <div key={m.id} className="pill-with-delete">
                 <label className={`pill ${(form.motifs_custom || []).includes(m.id) ? 'pill--on' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={(form.motifs_custom || []).includes(m.id)}
-                    onChange={e => {
-                      const ids = form.motifs_custom || [];
-                      set('motifs_custom', e.target.checked ? [...ids, m.id] : ids.filter(id => id !== m.id));
-                    }}
-                  />
+                  <input type="checkbox" checked={(form.motifs_custom || []).includes(m.id)}
+                    onChange={e => { const ids = form.motifs_custom || []; set('motifs_custom', e.target.checked ? [...ids, m.id] : ids.filter(id => id !== m.id)); }} />
                   {m.label}
                 </label>
-                <button
-                  type="button"
-                  className="pill-delete"
-                  title="Supprimer ce motif"
-                  onClick={() => onMotifDeleted(m.id)}
-                >×</button>
+                <button type="button" className="pill-delete" title="Supprimer ce motif" onClick={() => onMotifDeleted(m.id)}>×</button>
               </div>
             ))}
           </div>
         </fieldset>
       )}
-
       <div className="field">
         <label>Ajouter un motif personnalisé</label>
         <div className="motif-add">
-          <input
-            type="text"
-            value={newMotif}
-            onChange={e => setNewMotif(e.target.value)}
+          <input type="text" value={newMotif} onChange={e => setNewMotif(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddMotif(e); } }}
-            placeholder="Ex: Formation, Suivi pro…"
-            disabled={addingMotif}
-          />
+            placeholder="Ex: Formation, Suivi pro…" disabled={addingMotif} />
           <button type="button" className="btn btn--sm btn--secondary" onClick={handleAddMotif} disabled={addingMotif || !newMotif.trim()}>
             {addingMotif ? '...' : '+ Ajouter'}
           </button>
         </div>
       </div>
-
       <div className="form-row">
-        <div className="field">
-          <label>E-mail</label>
-          <input type="email" value={form.mail} onChange={e => set('mail', e.target.value)} placeholder="artiste@example.com" />
-        </div>
-        <div className="field">
-          <label>Téléphone</label>
-          <input type="text" value={form.telephone} onChange={e => set('telephone', e.target.value)} placeholder="06 XX XX XX XX" />
-        </div>
+        <div className="field"><label>E-mail</label><input type="email" value={form.mail} onChange={e => set('mail', e.target.value)} placeholder="artiste@example.com" /></div>
+        <div className="field"><label>Téléphone</label><input type="text" value={form.telephone} onChange={e => set('telephone', e.target.value)} placeholder="06 XX XX XX XX" /></div>
       </div>
-
       <fieldset>
         <legend>Conseiller·ère</legend>
         <div className="pills-row">
-          {[['qui_ck','CK'],['qui_kr','KR'],['qui_lv','LV'],['qui_vc','VC'],['qui_cc','CC']].map(([k,l]) => (
-            <CheckPill key={k} label={l} checked={!!form[k]} onChange={v => set(k, v)} />
-          ))}
+          {CONSEILLERS.map(({ key, label }) => <CheckPill key={key} label={label} checked={!!form[key]} onChange={v => set(key, v)} />)}
         </div>
       </fieldset>
-
-      <div className="field">
-        <label>Remarques / Thèmes</label>
-        <textarea rows={3} value={form.remarques} onChange={e => set('remarques', e.target.value)} placeholder="Résumé de l'échange…" />
-      </div>
-
-      <div className="field">
-        <label>Suivi</label>
-        <textarea rows={2} value={form.suivi} onChange={e => set('suivi', e.target.value)} placeholder="À rappeler, transmis à…" />
-      </div>
-
+      <div className="field"><label>Remarques / Thèmes</label><textarea rows={3} value={form.remarques} onChange={e => set('remarques', e.target.value)} placeholder="Résumé de l'échange…" /></div>
+      <div className="field"><label>Suivi</label><textarea rows={2} value={form.suivi} onChange={e => set('suivi', e.target.value)} placeholder="À rappeler, transmis à…" /></div>
       <div className="form-row">
-        <div className="field">
-          <label>Comment nous ont-ils connu ?</label>
-          <input type="text" value={form.comment_connu} onChange={e => set('comment_connu', e.target.value)} placeholder="Cercle Pro, Internet…" />
-        </div>
-        <div className="field field--center">
-          <label>Newsletter</label>
-          <CheckPill label="Inscription NL" checked={!!form.newsletter} onChange={v => set('newsletter', v)} />
-        </div>
+        <div className="field"><label>Comment nous ont-ils connu ?</label><input type="text" value={form.comment_connu} onChange={e => set('comment_connu', e.target.value)} placeholder="Cercle Pro, Internet…" /></div>
+        <div className="field field--center"><label>Newsletter</label><CheckPill label="Inscription NL" checked={!!form.newsletter} onChange={v => set('newsletter', v)} /></div>
       </div>
-
       {error && <p className="form-error">{error}</p>}
       <div className="form-actions">
         {onCancel && <button type="button" className="btn btn--ghost" onClick={onCancel}>Annuler</button>}
@@ -329,12 +432,7 @@ function ContactTable({ contacts, onEdit, onDelete, customMotifs }) {
   return (
     <div className="table-wrapper">
       <table className="contacts-table">
-        <thead>
-          <tr>
-            <th>Date</th><th>Type</th><th>Artiste</th><th>Profil</th><th>Motif(s)</th>
-            <th>Mail</th><th>Qui</th><th>Remarques</th><th></th>
-          </tr>
-        </thead>
+        <thead><tr><th>Date</th><th>Type</th><th>Artiste</th><th>Profil</th><th>Motif(s)</th><th>Mail</th><th>Qui</th><th>Remarques</th><th></th></tr></thead>
         <tbody>
           {contacts.map(row => (
             <tr key={row.id}>
@@ -377,6 +475,7 @@ function Dashboard({ stats }) {
   const motifs = stats.byMotif || {};
   const maxMotif = Math.max(...Object.values(motifs).map(Number), 1);
   const qui = stats.byQui || {};
+  const maxQui = Math.max(Number(qui.ck)||0, Number(qui.kr)||0, Number(qui.lv)||0, Number(qui.vc)||0, Number(qui.cc)||0, 1);
   return (
     <div className="dashboard">
       <div className="stats-cards">
@@ -386,14 +485,12 @@ function Dashboard({ stats }) {
       </div>
       <div className="stats-section">
         <h3>Motifs</h3>
-        {Object.entries(MOTIF_LABELS).map(([k, l]) => (
-          <StatBar key={k} label={l} value={Number(motifs[k]) || 0} max={maxMotif} color="var(--blue)" />
-        ))}
+        {Object.entries(MOTIF_LABELS).map(([k, l]) => <StatBar key={k} label={l} value={Number(motifs[k]) || 0} max={maxMotif} color="var(--blue)" />)}
       </div>
       <div className="stats-section">
         <h3>Par conseiller·ère</h3>
         {[['ck','CK'],['kr','KR'],['lv','LV'],['vc','VC'],['cc','CC']].map(([k,l]) => (
-          <StatBar key={k} label={l} value={Number(qui[k])||0} max={Math.max(Number(qui.ck)||0, Number(qui.kr)||0, Number(qui.lv)||0, Number(qui.vc)||0, Number(qui.cc)||0, 1)} color="var(--yellow)" />
+          <StatBar key={k} label={l} value={Number(qui[k])||0} max={maxQui} color="var(--yellow)" />
         ))}
       </div>
     </div>
@@ -402,6 +499,7 @@ function Dashboard({ stats }) {
 
 export default function App() {
   const [token, setToken] = useState(() => sessionStorage.getItem('mda_token') || '');
+  const [currentUser, setCurrentUser] = useState(() => { try { return JSON.parse(sessionStorage.getItem('mda_user') || 'null'); } catch { return null; } });
   const [view, setView] = useState('list');
   const [contacts, setContacts] = useState([]);
   const [stats, setStats] = useState(null);
@@ -410,9 +508,26 @@ export default function App() {
   const [filters, setFilters] = useState({ type: '', from: '', to: '' });
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [showChangePwd, setShowChangePwd] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
-  function handleLogin(t) { sessionStorage.setItem('mda_token', t); setToken(t); }
-  function handleLogout() { sessionStorage.removeItem('mda_token'); setToken(''); }
+  function showToast(msg, type = 'success') {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  }
+
+  function handleLogin(t, user) {
+    sessionStorage.setItem('mda_token', t);
+    sessionStorage.setItem('mda_user', JSON.stringify(user));
+    setToken(t); setCurrentUser(user);
+  }
+
+  function handleLogout() {
+    sessionStorage.removeItem('mda_token');
+    sessionStorage.removeItem('mda_user');
+    setToken(''); setCurrentUser(null);
+  }
 
   const apiFetch = useCallback((url, options = {}) =>
     fetch(url, { ...options, headers: { ...(options.headers || {}), 'Authorization': token } }),
@@ -451,13 +566,6 @@ export default function App() {
     } catch(e) { console.error(e); }
   }, [filters, apiFetch]);
 
-  const [toast, setToast] = useState(null);
-
-  function showToast(msg, type = 'success') {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
-  }
-
   useEffect(() => { if (token) { loadContacts(); loadCustomMotifs(); } }, [token, loadContacts, loadCustomMotifs]);
   useEffect(() => { if (token && view === 'stats') loadStats(); }, [token, view, loadStats]);
   useEffect(() => { if (token) loadContacts(); }, [filters]);
@@ -476,8 +584,7 @@ export default function App() {
   function handleSaved(contact, isUpdate) {
     if (isUpdate) setContacts(cs => cs.map(c => c.id === contact.id ? contact : c));
     else setContacts(cs => [contact, ...cs]);
-    setEditing(null);
-    setView('list');
+    setEditing(null); setView('list');
     showToast(isUpdate ? 'Contact mis à jour' : 'Contact enregistré');
   }
 
@@ -488,10 +595,7 @@ export default function App() {
     showToast('Contact supprimé', 'error');
   }
 
-  function handleMotifAdded(m) {
-    setCustomMotifs(ms => [...ms, m]);
-  }
-
+  function handleMotifAdded(m) { setCustomMotifs(ms => [...ms, m]); }
   async function handleMotifDeleted(id) {
     if (!window.confirm('Supprimer ce motif personnalisé ?')) return;
     await apiFetch(`${API_URL}/motifs-custom/${id}`, { method: 'DELETE' });
@@ -503,16 +607,17 @@ export default function App() {
     if (filters.type) params.set('type', filters.type);
     if (filters.from) params.set('from', filters.from);
     if (filters.to)   params.set('to', filters.to);
-    params.set('auth', token);
     window.open(`${API_URL}/export/csv?${params}`, '_blank');
   }
 
   return (
-    <div className="app">
+    <div className="app" onClick={() => setShowUserMenu(false)}>
       {toast && <div className={`toast toast--${toast.type}`}>{toast.msg}</div>}
+      {showChangePwd && <ChangePasswordModal token={token} onClose={() => setShowChangePwd(false)} showToast={showToast} />}
+
       <header className="app-header">
         <div className="app-header__brand">
-          <span className="app-header__logo" onClick={() => { setEditing(null); setView('list'); }} style={{cursor:'pointer'}}>MDA</span>
+          <span className="app-header__logo" onClick={() => { setEditing(null); setView('list'); }}>MDA</span>
           <div>
             <div className="app-header__title">Suivi des permanences</div>
             <div className="app-header__sub">La Maison des Artistes · 2026</div>
@@ -522,18 +627,26 @@ export default function App() {
           <button className={`nav-btn ${view === 'list' ? 'nav-btn--on' : ''}`} onClick={() => { setEditing(null); setView('list'); }}>Liste</button>
           <button className={`nav-btn ${view === 'new' ? 'nav-btn--on' : ''}`} onClick={() => { setEditing(null); setView('new'); }}>+ Nouveau</button>
           <button className={`nav-btn ${view === 'stats' ? 'nav-btn--on' : ''}`} onClick={() => setView('stats')}>Statistiques</button>
-          <button className="nav-btn nav-btn--logout" onClick={handleLogout}>⎋ Déconnexion</button>
+          {currentUser?.is_admin && (
+            <button className={`nav-btn ${view === 'admin' ? 'nav-btn--on' : ''}`} onClick={() => setView('admin')}>⚙ Comptes</button>
+          )}
+          <div className="user-menu-wrap" onClick={e => e.stopPropagation()}>
+            <button className="user-avatar" onClick={() => setShowUserMenu(v => !v)}>
+              {currentUser?.initiales || '?'}
+            </button>
+            {showUserMenu && (
+              <div className="user-menu">
+                <div className="user-menu__name">{currentUser?.display_name}</div>
+                <button className="user-menu__item" onClick={() => { setShowChangePwd(true); setShowUserMenu(false); }}>🔑 Changer mon mot de passe</button>
+                <button className="user-menu__item user-menu__item--logout" onClick={handleLogout}>⎋ Déconnexion</button>
+              </div>
+            )}
+          </div>
         </nav>
       </header>
 
       <div className="app-filters">
-        <input
-          type="text"
-          className="filter-search"
-          placeholder="🔍 Rechercher par nom, prénom, e-mail…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+        <input type="text" className="filter-search" placeholder="🔍 Rechercher par nom, prénom, e-mail…" value={search} onChange={e => setSearch(e.target.value)} />
         <select value={filters.type} onChange={e => setFilters(f => ({ ...f, type: e.target.value }))}>
           <option value="">Tous types</option>
           <option value="TEL">Téléphone</option>
@@ -550,13 +663,13 @@ export default function App() {
         {view === 'new' && !editing && (
           <section className="section-form">
             <h2>Nouveau contact</h2>
-            <ContactForm token={token} customMotifs={customMotifs} onSaved={handleSaved} onCancel={() => setView('list')} onMotifAdded={handleMotifAdded} onMotifDeleted={handleMotifDeleted} />
+            <ContactForm token={token} customMotifs={customMotifs} onSaved={handleSaved} onCancel={() => setView('list')} onMotifAdded={handleMotifAdded} onMotifDeleted={handleMotifDeleted} currentUser={currentUser} />
           </section>
         )}
         {editing && (
           <section className="section-form">
             <h2>Modifier le contact</h2>
-            <ContactForm token={token} customMotifs={customMotifs} initial={editing} onSaved={handleSaved} onCancel={() => { setEditing(null); setView('list'); }} onMotifAdded={handleMotifAdded} onMotifDeleted={handleMotifDeleted} />
+            <ContactForm token={token} customMotifs={customMotifs} initial={editing} onSaved={handleSaved} onCancel={() => { setEditing(null); setView('list'); }} onMotifAdded={handleMotifAdded} onMotifDeleted={handleMotifDeleted} currentUser={currentUser} />
           </section>
         )}
         {view === 'list' && !editing && (
@@ -565,6 +678,7 @@ export default function App() {
           </section>
         )}
         {view === 'stats' && !editing && <section><Dashboard stats={stats} /></section>}
+        {view === 'admin' && currentUser?.is_admin && <section><AdminPanel token={token} showToast={showToast} /></section>}
       </main>
       <Footer />
     </div>
