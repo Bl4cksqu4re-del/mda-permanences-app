@@ -293,6 +293,7 @@ function CheckPill({ checked, onChange, label, accent }) {
 function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifAdded, onMotifDeleted, currentUser }) {
   const initForm = () => {
     const base = initial ? { ...initial, motifs_custom: initial.motifs_custom || [] } : { ...EMPTY_FORM };
+    if (base.date) base.date = base.date.slice(0, 10);
     if (!initial && currentUser?.initiales) {
       const key = `qui_${currentUser.initiales.toLowerCase()}`;
       if (key in base) base[key] = true;
