@@ -608,6 +608,24 @@ export default function App() {
 
   const prevContactsRef = React.useRef(null);
 
+  const checkNewCheckins = useCallback(async () => {
+    try {
+      const res = await apiFetch(`${API_URL}/contacts?from=${new Date().toISOString().slice(0,10)}`);
+      if (!res.ok) return;
+      const todayContacts = await res.json();
+      if (prevContactsRef.current !== null) {
+        const prevIds = new Set(prevContactsRef.current.map(c => c.id));
+        const added = todayContacts.filter(c =>
+          !prevIds.has(c.id) && (c.remarques || '').includes('[Enregistrement tablette accueil]')
+        );
+        if (added.length > 0) {
+          setCheckinEnAttente(prev => [...prev, ...added]);
+        }
+      }
+      prevContactsRef.current = todayContacts;
+    } catch(e) { console.error(e); }
+  }, [apiFetch]);
+
   const loadContacts = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
@@ -618,16 +636,6 @@ export default function App() {
       const res = await apiFetch(`${API_URL}/contacts?${params}`);
       if (res.status === 401) { handleLogout(); return; }
       const newContacts = await res.json();
-      // Détecter les nouveaux checkins tablette
-      if (prevContactsRef.current !== null) {
-        const prevIds = new Set(prevContactsRef.current.map(c => c.id));
-        const added = newContacts.filter(c =>
-          !prevIds.has(c.id) && (c.remarques || '').includes('[Enregistrement tablette accueil]')
-        );
-        if (added.length > 0) {
-          setCheckinEnAttente(prev => [...prev, ...added]);
-        }
-      }
       prevContactsRef.current = newContacts;
       setContacts(newContacts);
       setLastRefresh(new Date());
@@ -663,6 +671,13 @@ export default function App() {
     const interval = setInterval(() => loadContacts(), 20000);
     return () => clearInterval(interval);
   }, [token, view, loadContacts]);
+
+  useEffect(() => {
+    if (!token) return;
+    checkNewCheckins(); // premier check immédiat
+    const interval = setInterval(() => checkNewCheckins(), 20000);
+    return () => clearInterval(interval);
+  }, [token, checkNewCheckins]);
 
   useEffect(() => {
     document.body.classList.toggle('dark', darkMode);
