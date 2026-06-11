@@ -348,3 +348,24 @@ fieldset legend { font-size: 12px; font-weight: 700; text-transform: uppercase; 
   transition: all .12s;
 }
 .pill-delete:hover { color: #e53e3e; background: rgba(229,62,62,.1); }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+  animation: toast-in .2s ease;
+}
+.toast--success { background: var(--mint); color: var(--charbon); }
+.toast--error   { background: #fed7d7; color: #c53030; }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
