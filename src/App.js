@@ -613,14 +613,15 @@ export default function App() {
   );
 
   const prevContactsRef = React.useRef(null);
+  const prevCheckinRef = React.useRef(null);
 
   const checkNewCheckins = useCallback(async () => {
     try {
       const res = await apiFetch(`${API_URL}/contacts?from=${new Date().toISOString().slice(0,10)}`);
       if (!res.ok) return;
       const todayContacts = await res.json();
-      if (prevContactsRef.current !== null) {
-        const prevIds = new Set(prevContactsRef.current.map(c => c.id));
+      if (prevCheckinRef.current !== null) {
+        const prevIds = new Set(prevCheckinRef.current.map(c => c.id));
         const added = todayContacts.filter(c =>
           !prevIds.has(c.id) && (c.remarques || '').includes('[Enregistrement tablette accueil]')
         );
@@ -628,7 +629,7 @@ export default function App() {
           setCheckinEnAttente(prev => [...prev, ...added]);
         }
       }
-      prevContactsRef.current = todayContacts;
+      prevCheckinRef.current = todayContacts;
     } catch(e) { console.error(e); }
   }, [apiFetch]);
 
@@ -642,7 +643,6 @@ export default function App() {
       const res = await apiFetch(`${API_URL}/contacts?${params}`);
       if (res.status === 401) { handleLogout(); return; }
       const newContacts = await res.json();
-      prevContactsRef.current = newContacts;
       setContacts(newContacts);
       setLastRefresh(new Date());
     } catch(e) { console.error(e); }
