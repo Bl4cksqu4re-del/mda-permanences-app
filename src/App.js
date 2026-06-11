@@ -2,9 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import API_URL from './config';
 import './App.css';
 
+const getDefaultType = () => {
+  const day = new Date().getDay(); // 0=dim, 1=lun, 2=mar, 3=mer, 4=jeu, 5=ven, 6=sam
+  return [4, 5].includes(day) ? 'PRES' : 'TEL';
+};
+
 const EMPTY_FORM = {
   date: new Date().toISOString().slice(0, 10),
-  type: 'TEL',
+  type: getDefaultType(),
   prenom: '', nom: '',
   id_adherent: false, id_non_adherent: false,
   id_ancien_adherent: false, id_structure: false, id_autres: false,
