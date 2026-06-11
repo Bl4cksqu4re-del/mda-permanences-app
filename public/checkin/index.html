@@ -9,6 +9,388 @@
     :root {
       --blue: #0004F2; --charbon: #1C1F2C; --yellow: #FFEA00;
       --mint: #16E0BD; --border: #E2E2EB; --off: #F5F5F8;
+      --radius: 12px; --text: #1C1F2C; --muted: #6B6E82;
+    }
+
+    html, body {
+      height: 100%; overflow: hidden;
+      font-family: 'Segoe UI', Calibri, sans-serif;
+      background: var(--charbon); color: var(--text);
+    }
+
+    /* Layout global : header + progress + contenu + nav */
+    .app {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header compact */
+    header {
+      background: var(--charbon); color: white;
+      padding: 12px 20px; display: flex; align-items: center; gap: 12px;
+      flex-shrink: 0;
+    }
+    .logo { background: var(--blue); color: var(--yellow); font-weight: 800; font-size: 15px; letter-spacing: 2px; padding: 5px 9px; border-radius: 5px; }
+    .header-title { font-size: 15px; font-weight: 700; }
+    .header-sub { font-size: 11px; color: #aaa; }
+
+    /* Progress compact */
+    .progress-bar {
+      background: var(--charbon); padding: 8px 20px 12px;
+      display: flex; align-items: center; flex-shrink: 0;
+    }
+    .step-item { display: flex; align-items: center; gap: 6px; flex: 1; }
+    .step-item:last-child { flex: 0; }
+    .step-dot { width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); background: transparent; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: rgba(255,255,255,.5); flex-shrink: 0; transition: all .3s; }
+    .step-dot.active { border-color: var(--yellow); background: var(--yellow); color: var(--charbon); }
+    .step-dot.done { border-color: var(--mint); background: var(--mint); color: var(--charbon); }
+    .step-label { font-size: 10px; font-weight: 600; color: rgba(255,255,255,.4); white-space: nowrap; }
+    .step-label.active { color: var(--yellow); }
+    .step-line { flex: 1; height: 2px; background: rgba(255,255,255,.15); margin: 0 6px; transition: background .3s; }
+    .step-line.done { background: var(--mint); }
+
+    /* Zone scrollable du contenu */
+    .step-content {
+      flex: 1;
+      background: var(--off);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 16px 16px 8px;
+    }
+
+    /* Barre de nav fixe en bas */
+    .step-nav {
+      background: white;
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex; gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .step-panel { display: none; }
+    .step-panel.active { display: block; animation: fadeIn .2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    .step-title { font-size: 20px; font-weight: 800; color: var(--charbon); margin-bottom: 4px; }
+    .step-sub { font-size: 13px; color: var(--muted); margin-bottom: 14px; line-height: 1.4; }
+
+    .card { background: white; border-radius: var(--radius); padding: 16px; box-shadow: 0 1px 8px rgba(0,4,242,.06); margin-bottom: 12px; }
+
+    /* Champs */
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .field:last-child { margin-bottom: 0; }
+    .field label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+    .field input { border: 1.5px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-size: 16px; font-family: inherit; color: var(--text); width: 100%; transition: border-color .15s; background: white; }
+    .field input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,4,242,.1); }
+
+    /* Grands boutons avec icône */
+    .choice-grid { display: grid; gap: 10px; }
+    .choice-grid.col2 { grid-template-columns: 1fr 1fr; }
+    .choice-grid.col3 { grid-template-columns: 1fr 1fr 1fr; }
+
+    .choice-btn {
+      padding: 14px 8px; border: 2px solid var(--border);
+      border-radius: var(--radius); background: white;
+      font-size: 13px; font-family: inherit; font-weight: 600;
+      color: var(--muted); cursor: pointer; text-align: center;
+      transition: all .15s; line-height: 1.3;
+    }
+    .choice-btn .icon { font-size: 26px; display: block; margin-bottom: 5px; }
+    .choice-btn:active { transform: scale(.97); }
+    .choice-btn.active { background: var(--charbon); color: white; border-color: var(--charbon); }
+
+    /* Boutons motifs compacts */
+    .motifs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .motif-btn {
+      padding: 12px 8px; border: 2px solid var(--border);
+      border-radius: var(--radius); background: white;
+      font-size: 13px; font-family: inherit; font-weight: 600;
+      color: var(--muted); cursor: pointer; text-align: center;
+      transition: all .15s; line-height: 1.3;
+    }
+    .motif-btn:active { transform: scale(.97); }
+    .motif-btn.active { background: var(--blue); color: white; border-color: var(--blue); }
+
+    .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 10px; display: block; }
+
+    /* Boutons nav */
+    .btn-back { padding: 13px 20px; border: 2px solid var(--border); border-radius: var(--radius); background: white; font-size: 15px; font-family: inherit; font-weight: 600; color: var(--muted); cursor: pointer; }
+    .btn-next { flex: 1; padding: 13px; background: var(--blue); color: white; border: none; border-radius: var(--radius); font-size: 16px; font-family: inherit; font-weight: 700; cursor: pointer; }
+    .btn-next:active { filter: brightness(.9); }
+    .btn-submit { flex: 1; padding: 13px; background: var(--mint); color: var(--charbon); border: none; border-radius: var(--radius); font-size: 16px; font-family: inherit; font-weight: 800; cursor: pointer; }
+    .btn-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+    .form-error { color: #c53030; background: #fff5f5; border: 1.5px solid #feb2b2; border-radius: var(--radius); padding: 10px 14px; font-size: 14px; margin-bottom: 12px; display: none; }
+
+    /* Confirmation */
+    #step-confirm {
+      display: none; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center;
+      height: 100%; padding: 32px 24px;
+    }
+    #step-confirm.active { display: flex; }
+    .confirm-icon { font-size: 64px; margin-bottom: 16px; }
+    .confirm-title { font-size: 26px; font-weight: 800; color: var(--charbon); margin-bottom: 10px; }
+    .confirm-text { font-size: 16px; color: var(--muted); line-height: 1.6; }
+    .btn-reset { margin-top: 32px; padding: 14px 32px; background: var(--charbon); color: white; border: none; border-radius: var(--radius); font-size: 15px; font-family: inherit; font-weight: 600; cursor: pointer; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo">MDA</div>
+    <div>
+      <div class="header-title">La Maison des Artistes</div>
+      <div class="header-sub">Enregistrement accueil</div>
+    </div>
+  </header>
+
+  <div class="progress-bar" id="progress-bar">
+    <div class="step-item">
+      <div class="step-dot active" id="dot-1">1</div>
+      <span class="step-label active" id="lbl-1">Identité</span>
+    </div>
+    <div class="step-line" id="line-1"></div>
+    <div class="step-item">
+      <div class="step-dot" id="dot-2">2</div>
+      <span class="step-label" id="lbl-2">Profil</span>
+    </div>
+    <div class="step-line" id="line-2"></div>
+    <div class="step-item">
+      <div class="step-dot" id="dot-3">3</div>
+      <span class="step-label" id="lbl-3">Activité</span>
+    </div>
+    <div class="step-line" id="line-3"></div>
+    <div class="step-item">
+      <div class="step-dot" id="dot-4">4</div>
+      <span class="step-label" id="lbl-4">Motifs</span>
+    </div>
+  </div>
+
+  <div class="step-content" id="step-content">
+
+    <!-- Étape 1 : Identité -->
+    <div class="step-panel active" id="step-1">
+      <div class="step-title">Bonjour !</div>
+      <p class="step-sub">Renseignez vos coordonnées pour enregistrer votre arrivée.</p>
+      <div id="error-1" class="form-error"></div>
+      <div class="card">
+        <div class="field"><label>Prénom *</label><input type="text" id="prenom" placeholder="Votre prénom" autocomplete="given-name" /></div>
+        <div class="field"><label>Nom *</label><input type="text" id="nom" placeholder="Votre nom" autocomplete="family-name" /></div>
+        <div class="field"><label>E-mail</label><input type="email" id="mail" placeholder="votre@email.com" autocomplete="email" /></div>
+        <div class="field"><label>Téléphone</label><input type="tel" id="telephone" placeholder="06 XX XX XX XX" autocomplete="tel" /></div>
+      </div>
+    </div>
+
+    <!-- Étape 2 : Profil -->
+    <div class="step-panel" id="step-2">
+      <div class="step-title">Votre profil</div>
+      <p class="step-sub">Quelques informations sur votre situation.</p>
+      <div id="error-2" class="form-error"></div>
+      <div class="card" style="margin-bottom:12px">
+        <span class="section-label">Vous êtes *</span>
+        <div class="choice-grid col3" id="profil-group">
+          <button class="choice-btn" data-value="artiste" onclick="selectSingle('profil-group',this)"><span class="icon">🎨</span>Artiste</button>
+          <button class="choice-btn" data-value="structure" onclick="selectSingle('profil-group',this)"><span class="icon">🏢</span>Structure</button>
+          <button class="choice-btn" data-value="autre" onclick="selectSingle('profil-group',this)"><span class="icon">👤</span>Autre</button>
+        </div>
+      </div>
+      <div class="card">
+        <span class="section-label">Votre situation *</span>
+        <div class="choice-grid col2" id="adhesion-group">
+          <button class="choice-btn" data-value="adherent" onclick="selectSingle('adhesion-group',this)"><span class="icon">✅</span>Adhérent·e</button>
+          <button class="choice-btn" data-value="non_adherent" onclick="selectSingle('adhesion-group',this)"><span class="icon">👋</span>Non-adhérent·e</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Étape 3 : Activité -->
+    <div class="step-panel" id="step-3">
+      <div class="step-title">Votre activité</div>
+      <p class="step-sub">Sélectionnez votre domaine artistique principal.</p>
+      <div class="card">
+        <div class="choice-grid col2" id="activite-group">
+          <button class="choice-btn" data-value="Arts graphiques et plastiques" onclick="selectSingle('activite-group',this)"><span class="icon">🖼️</span>Arts graphiques et plastiques</button>
+          <button class="choice-btn" data-value="Ecrit" onclick="selectSingle('activite-group',this)"><span class="icon">✍️</span>Écrit</button>
+          <button class="choice-btn" data-value="Musique et chorégraphie" onclick="selectSingle('activite-group',this)"><span class="icon">🎵</span>Musique et chorégraphie</button>
+          <button class="choice-btn" data-value="Audiovisuelle" onclick="selectSingle('activite-group',this)"><span class="icon">🎬</span>Audiovisuelle</button>
+          <button class="choice-btn" data-value="Photographie" onclick="selectSingle('activite-group',this)"><span class="icon">📷</span>Photographie</button>
+          <button class="choice-btn" data-value="Autre" onclick="selectSingle('activite-group',this)"><span class="icon">🎭</span>Autre</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Étape 4 : Motifs -->
+    <div class="step-panel" id="step-4">
+      <div class="step-title">Objet de votre venue</div>
+      <p class="step-sub">Sélectionnez un ou plusieurs motifs.</p>
+      <div id="error-4" class="form-error"></div>
+      <div class="card">
+        <div class="motifs-grid">
+          <button class="motif-btn" data-value="declaration" onclick="toggleMotif(this)">Déclaration d'activité</button>
+          <button class="motif-btn" data-value="adjonction" onclick="toggleMotif(this)">Adjonction d'activité</button>
+          <button class="motif-btn" data-value="juridique" onclick="toggleMotif(this)">Juridique</button>
+          <button class="motif-btn" data-value="social" onclick="toggleMotif(this)">Social / Retraite</button>
+          <button class="motif-btn" data-value="comptable_fiscal" onclick="toggleMotif(this)">Comptable / Fiscal</button>
+          <button class="motif-btn" data-value="communication" onclick="toggleMotif(this)">Communication</button>
+          <button class="motif-btn" data-value="adhesion" onclick="toggleMotif(this)">Adhésion</button>
+          <button class="motif-btn" data-value="activite_artistique" onclick="toggleMotif(this)">Activité artistique</button>
+          <button class="motif-btn" data-value="autres" onclick="toggleMotif(this)">Autre motif</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirmation -->
+    <div id="step-confirm">
+      <div class="confirm-icon">✅</div>
+      <div class="confirm-title">Merci !</div>
+      <p class="confirm-text">Votre arrivée a bien été enregistrée.<br>Nous vous prendrons en rendez-vous dès que possible.</p>
+      <button class="btn-reset" onclick="resetForm()">Nouvel enregistrement</button>
+    </div>
+
+  </div>
+
+  <!-- Nav fixe en bas -->
+  <div class="step-nav" id="step-nav">
+    <button class="btn-back" id="btn-back" onclick="goBack()" style="display:none">←</button>
+    <button class="btn-next" id="btn-next" onclick="goNext()">Continuer →</button>
+    <button class="btn-submit" id="btn-submit" onclick="handleSubmit()" style="display:none">Confirmer mon arrivée ✓</button>
+  </div>
+
+</div>
+
+<script>
+  const API_URL = 'https://mda-permanences-api.onrender.com';
+  const TOTAL = 4;
+  let current = 1;
+  const sel = { profil: null, adhesion: null, activite: null };
+
+  function updateProgress(step) {
+    for (let i = 1; i <= TOTAL; i++) {
+      const dot = document.getElementById('dot-' + i);
+      const lbl = document.getElementById('lbl-' + i);
+      if (i < step) { dot.className = 'step-dot done'; dot.textContent = '✓'; lbl.className = 'step-label'; }
+      else if (i === step) { dot.className = 'step-dot active'; dot.textContent = i; lbl.className = 'step-label active'; }
+      else { dot.className = 'step-dot'; dot.textContent = i; lbl.className = 'step-label'; }
+      if (i < TOTAL) document.getElementById('line-' + i).className = 'step-line' + (i < step ? ' done' : '');
+    }
+  }
+
+  function updateNav(step) {
+    document.getElementById('btn-back').style.display = step > 1 ? 'block' : 'none';
+    document.getElementById('btn-next').style.display = step < TOTAL ? 'block' : 'none';
+    document.getElementById('btn-submit').style.display = step === TOTAL ? 'block' : 'none';
+  }
+
+  function showStep(n) {
+    document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('step-confirm').classList.remove('active');
+    document.getElementById('step-' + n).classList.add('active');
+    document.getElementById('step-content').scrollTop = 0;
+    updateProgress(n);
+    updateNav(n);
+    current = n;
+  }
+
+  function showError(step, msg) {
+    const box = document.getElementById('error-' + step);
+    if (!box) return;
+    box.textContent = msg; box.style.display = 'block';
+  }
+  function hideError(step) {
+    const box = document.getElementById('error-' + step);
+    if (box) box.style.display = 'none';
+  }
+
+  function goNext() {
+    hideError(current);
+    if (current === 1) {
+      const p = document.getElementById('prenom').value.trim();
+      const n = document.getElementById('nom').value.trim();
+      if (!p && !n) { showError(1, "Merci d'indiquer au moins votre prénom ou votre nom."); return; }
+    }
+    if (current === 2) {
+      if (!sel.profil) { showError(2, "Merci de sélectionner votre type de profil."); return; }
+      if (!sel.adhesion) { showError(2, "Merci d'indiquer votre situation."); return; }
+    }
+    showStep(current + 1);
+  }
+
+  function goBack() { showStep(current - 1); }
+
+  function selectSingle(groupId, btn) {
+    document.querySelectorAll('#' + groupId + ' .choice-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (groupId === 'profil-group') sel.profil = btn.dataset.value;
+    if (groupId === 'adhesion-group') sel.adhesion = btn.dataset.value;
+    if (groupId === 'activite-group') sel.activite = btn.dataset.value;
+  }
+
+  function toggleMotif(btn) { btn.classList.toggle('active'); }
+
+  async function handleSubmit() {
+    hideError(4);
+    const motifs = {};
+    document.querySelectorAll('.motif-btn').forEach(btn => {
+      motifs['motif_' + btn.dataset.value] = btn.classList.contains('active');
+    });
+    const payload = {
+      prenom:    document.getElementById('prenom').value.trim() || null,
+      nom:       document.getElementById('nom').value.trim() || null,
+      mail:      document.getElementById('mail').value.trim() || null,
+      telephone: document.getElementById('telephone').value.trim() || null,
+      activite_type:   sel.activite,
+      id_adherent:     sel.adhesion === 'adherent',
+      id_non_adherent: sel.adhesion === 'non_adherent',
+      id_structure:    sel.profil === 'structure',
+      id_autres:       sel.profil === 'autre',
+      ...motifs
+    };
+    const btn = document.getElementById('btn-submit');
+    btn.disabled = true; btn.textContent = 'Envoi...';
+    try {
+      const res = await fetch(API_URL + '/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error();
+      document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('step-confirm').classList.add('active');
+      document.getElementById('step-nav').style.display = 'none';
+      document.getElementById('progress-bar').style.display = 'none';
+    } catch {
+      showError(4, "Une erreur est survenue. Merci de réessayer ou d'informer l'accueil.");
+      btn.disabled = false; btn.textContent = 'Confirmer mon arrivée ✓';
+    }
+  }
+
+  function resetForm() {
+    document.getElementById('prenom').value = '';
+    document.getElementById('nom').value = '';
+    document.getElementById('mail').value = '';
+    document.getElementById('telephone').value = '';
+    sel.profil = null; sel.adhesion = null; sel.activite = null;
+    document.querySelectorAll('.choice-btn, .motif-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('step-nav').style.display = 'flex';
+    document.getElementById('progress-bar').style.display = 'flex';
+    showStep(1);
+  }
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Accueil — La Maison des Artistes</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #0004F2; --charbon: #1C1F2C; --yellow: #FFEA00;
+      --mint: #16E0BD; --border: #E2E2EB; --off: #F5F5F8;
       --radius: 14px; --text: #1C1F2C; --muted: #6B6E82;
     }
     body { font-family: 'Segoe UI', Calibri, sans-serif; background: var(--off); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
