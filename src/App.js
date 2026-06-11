@@ -586,6 +586,24 @@ export default function App() {
   const [lastRefresh, setLastRefresh] = useState(null);
   const [checkinEnAttente, setCheckinEnAttente] = useState([]);
   const PAGE_SIZE = 50;
+
+  // Rappel CSV Orange Business
+  const getRappelCSV = () => {
+    const now = new Date();
+    const moisCourant = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const fait = localStorage.getItem(`csv_fait_${moisCourant}`);
+    if (fait) return null;
+    // Rappel du 1er au 15 du mois suivant (1 mois = données disponibles 1 mois et demi)
+    const moisPrecedent = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const nomMois = moisPrecedent.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    const dateLimite = new Date(now.getFullYear(), now.getMonth(), 15);
+    const joursRestants = Math.ceil((dateLimite - now) / (1000 * 60 * 60 * 24));
+    const urgent = joursRestants <= 5;
+    // N'afficher qu'à partir du 1er du mois
+    if (now.getDate() < 1) return null;
+    return { nomMois, dateLimite, joursRestants, urgent, moisCourant };
+  };
+  const [rappelCSV, setRappelCSV] = useState(getRappelCSV);
   const [toast, setToast] = useState(null);
   const [showChangePwd, setShowChangePwd] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -847,7 +865,31 @@ export default function App() {
                 <div className="day-counter__label">En attente</div>
               </div>
             </div>
-            {checkinEnAttente.length > 0 && (
+            {rappelCSV && (
+              <div className={`rappel-csv-banner ${rappelCSV.urgent ? 'rappel-csv-banner--urgent' : ''}`}>
+                <span className="rappel-csv-banner__icon">{rappelCSV.urgent ? '⚠️' : '📥'}</span>
+                <div className="rappel-csv-banner__body">
+                  <div className="rappel-csv-banner__title">
+                    {rappelCSV.urgent
+                      ? `Urgent — Plus que ${rappelCSV.joursRestants} jour${rappelCSV.joursRestants > 1 ? 's' : ''} !`
+                      : 'Rappel mensuel — Export Orange Business'}
+                  </div>
+                  <div className="rappel-csv-banner__detail">
+                    Téléchargez le CSV des appels de <strong>{rappelCSV.nomMois}</strong> avant le{' '}
+                    <strong>{rappelCSV.dateLimite.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}</strong>
+                    {' '}— les données ne sont conservées que 6 semaines sur le serveur Orange.
+                  </div>
+                </div>
+                <div style={{display:'flex', gap:'8px', flexShrink:0}}>
+                  <a href="https://telephony.teaming.orange-business.com/index/user_call_details/" target="_blank" className="rappel-csv-banner__btn rappel-csv-banner__btn--link">⬇ Télécharger CSV</a>
+                  <a href="/webex/" target="_blank" className="rappel-csv-banner__btn rappel-csv-banner__btn--link">Importer →</a>
+                  <button className="rappel-csv-banner__btn" onClick={() => {
+                    localStorage.setItem(`csv_fait_${rappelCSV.moisCourant}`, '1');
+                    setRappelCSV(null);
+                  }}>C'est fait ✓</button>
+                </div>
+              </div>
+            )}
               <div className="checkin-banner">
                 <span className="checkin-banner__icon">🔔</span>
                 <div className="checkin-banner__body">
