@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Webex — Tableau de bord MDA</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #0004F2; --charbon: #1C1F2C; --yellow: #FFEA00;
+      --mint: #16E0BD; --azure: #019DF1; --border: #E2E2EB;
+      --off: #F5F5F8; --radius: 12px; --text: #1C1F2C; --muted: #6B6E82;
+    }
+    body { font-family: 'Segoe UI', Calibri, sans-serif; background: var(--off); color: var(--text); min-height: 100vh; }
+
+    header { background: var(--charbon); color: white; padding: 16px 32px; display: flex; align-items: center; gap: 16px; }
+    .logo { background: var(--blue); color: var(--yellow); font-weight: 800; font-size: 16px; letter-spacing: 2px; padding: 6px 10px; border-radius: 5px; }
+    .header-title { font-size: 16px; font-weight: 700; }
+    .header-sub { font-size: 12px; color: #aaa; }
+
+    main { max-width: 1100px; margin: 0 auto; padding: 28px 24px 60px; }
+
+    .top-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .top-bar h2 { font-size: 20px; font-weight: 800; flex: 1; }
+    input[type=date] { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; font-size: 14px; font-family: inherit; }
+    .btn { padding: 9px 18px; border: none; border-radius: var(--radius); font-size: 14px; font-family: inherit; font-weight: 600; cursor: pointer; transition: all .15s; }
+    .btn--primary { background: var(--blue); color: white; }
+    .btn--primary:hover { background: #0003cc; }
+    .btn--ghost { background: white; border: 1.5px solid var(--border); color: var(--text); }
+    .btn--connect { background: #00B140; color: white; }
+
+    .status-bar { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 10px 16px; border-radius: var(--radius); margin-bottom: 20px; }
+    .status-bar.connected { background: rgba(22,224,189,.15); color: #0d8a74; }
+    .status-bar.disconnected { background: #fff3cd; color: #7a5600; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .status-dot.on { background: var(--mint); }
+    .status-dot.off { background: #f0ad00; }
+
+    .stats-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: white; border-radius: var(--radius); padding: 20px; box-shadow: 0 2px 12px rgba(0,4,242,.06); border-top: 4px solid var(--border); }
+    .stat-card--total { border-color: var(--blue); }
+    .stat-card--decroches { border-color: var(--mint); }
+    .stat-card--manques { border-color: #f0ad00; }
+    .stat-card--duree { border-color: var(--azure); }
+    .stat-card__val { font-size: 36px; font-weight: 800; color: var(--charbon); }
+    .stat-card__label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .stat-card__sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .section { background: white; border-radius: var(--radius); padding: 20px 24px; box-shadow: 0 2px 12px rgba(0,4,242,.06); }
+    .section h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 16px; }
+
+    .stat-bar { display: grid; grid-template-columns: 160px 1fr 50px; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .stat-bar__label { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .stat-bar__track { height: 10px; background: var(--border); border-radius: 5px; overflow: hidden; }
+    .stat-bar__fill { height: 100%; border-radius: 5px; }
+    .stat-bar__val { font-size: 13px; font-weight: 700; text-align: right; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 8px 12px; background: var(--charbon); color: white; font-size: 12px; }
+    td { padding: 9px 12px; border-bottom: 1px solid var(--border); }
+    tr:hover td { background: var(--off); }
+
+    .loading { text-align: center; padding: 40px; color: var(--muted); }
+    .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 15px; }
+
+    footer { text-align: center; padding: 16px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); }
+
+    @media (max-width: 700px) {
+      .stats-cards { grid-template-columns: 1fr 1fr; }
+      .grid2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">MDA</div>
+  <div>
+    <div class="header-title">Tableau de bord Webex</div>
+    <div class="header-sub">La Maison des Artistes · Appels téléphoniques</div>
+  </div>
+</header>
+
+<main>
+  <div class="top-bar">
+    <h2>Statistiques d'appels</h2>
+    <input type="date" id="from" />
+    <input type="date" id="to" />
+    <button class="btn btn--primary" onclick="loadStats()">Actualiser</button>
+    <button class="btn btn--ghost" onclick="setThisWeek()">Cette semaine</button>
+    <button class="btn btn--ghost" onclick="setThisMonth()">Ce mois</button>
+  </div>
+
+  <div id="status-bar" class="status-bar disconnected">
+    <div class="status-dot off"></div>
+    <span id="status-text">Vérification de la connexion Webex…</span>
+    <button class="btn btn--connect" id="connect-btn" style="display:none" onclick="connectWebex()">Connecter Webex</button>
+  </div>
+
+  <div id="content">
+    <div class="loading">Chargement…</div>
+  </div>
+</main>
+
+<footer>Tous droits réservés © Bl4cksquare · La Maison des Artistes · art. L111-1 du CPI</footer>
+
+<script>
+  const API_URL = 'https://mda-permanences-api.onrender.com';
+  const token = sessionStorage.getItem('mda_token');
+
+  if (!token) {
+    window.location.href = '/';
+  }
+
+  function fmt(sec) {
+    if (!sec) return '0s';
+    const m = Math.floor(sec / 60), s = sec % 60;
+    return m > 0 ? `${m}m${s > 0 ? s + 's' : ''}` : `${s}s`;
+  }
+
+  function setThisWeek() {
+    const now = new Date();
+    const day = now.getDay() || 7;
+    const mon = new Date(now); mon.setDate(now.getDate() - day + 1);
+    document.getElementById('from').value = mon.toISOString().slice(0,10);
+    document.getElementById('to').value = now.toISOString().slice(0,10);
+    loadStats();
+  }
+
+  function setThisMonth() {
+    const now = new Date();
+    document.getElementById('from').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+    document.getElementById('to').value = now.toISOString().slice(0,10);
+    loadStats();
+  }
+
+  async function checkStatus() {
+    try {
+      const res = await fetch(`${API_URL}/webex/status`, { headers: { 'Authorization': token } });
+      const data = await res.json();
+      const bar = document.getElementById('status-bar');
+      const dot = bar.querySelector('.status-dot');
+      const txt = document.getElementById('status-text');
+      const btn = document.getElementById('connect-btn');
+      if (data.connected) {
+        bar.className = 'status-bar connected';
+        dot.className = 'status-dot on';
+        txt.textContent = `Webex connecté — token valide jusqu'au ${new Date(data.expires_at).toLocaleString('fr-FR')}`;
+        btn.style.display = 'none';
+        loadStats();
+      } else {
+        bar.className = 'status-bar disconnected';
+        dot.className = 'status-dot off';
+        txt.textContent = 'Webex non connecté';
+        btn.style.display = 'inline-block';
+        document.getElementById('content').innerHTML = '<div class="empty">Connectez Webex pour afficher les statistiques d\'appels.</div>';
+      }
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  function connectWebex() {
+    window.open(`${API_URL}/webex/auth`, '_blank', 'width=600,height=700');
+    setTimeout(checkStatus, 5000);
+  }
+
+  async function loadStats() {
+    const from = document.getElementById('from').value;
+    const to   = document.getElementById('to').value;
+    document.getElementById('content').innerHTML = '<div class="loading">Chargement des données Webex…</div>';
+    try {
+      const params = new URLSearchParams();
+      if (from) params.set('from', from);
+      if (to)   params.set('to', to);
+      const res = await fetch(`${API_URL}/webex/stats?${params}`, { headers: { 'Authorization': token } });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 401 && data.auth_url) {
+          document.getElementById('content').innerHTML = '<div class="empty">Webex non connecté. Cliquez sur "Connecter Webex".</div>';
+          document.getElementById('connect-btn').style.display = 'inline-block';
+          return;
+        }
+        throw new Error(data.error);
+      }
+      renderDashboard(data);
+    } catch(e) {
+      document.getElementById('content').innerHTML = `<div class="empty">Erreur : ${e.message}</div>`;
+    }
+  }
+
+  function renderDashboard(d) {
+    const tauxDecroches = d.total > 0 ? Math.round((d.decroches / d.total) * 100) : 0;
+    const repondants = Object.entries(d.parRepondant || {}).sort((a,b) => b[1].appels - a[1].appels);
+    const maxAppels = repondants.length > 0 ? repondants[0][1].appels : 1;
+
+    document.getElementById('content').innerHTML = `
+      <div class="stats-cards">
+        <div class="stat-card stat-card--total">
+          <div class="stat-card__val">${d.total}</div>
+          <div class="stat-card__label">Appels reçus</div>
+          <div class="stat-card__sub">Du ${d.periode.from} au ${d.periode.to}</div>
+        </div>
+        <div class="stat-card stat-card--decroches">
+          <div class="stat-card__val">${d.decroches}</div>
+          <div class="stat-card__label">Appels décrochés</div>
+          <div class="stat-card__sub">${tauxDecroches}% de taux de décroché</div>
+        </div>
+        <div class="stat-card stat-card--manques">
+          <div class="stat-card__val">${d.nonDecroches}</div>
+          <div class="stat-card__label">Appels manqués</div>
+          <div class="stat-card__sub">${100 - tauxDecroches}% non décrochés</div>
+        </div>
+        <div class="stat-card stat-card--duree">
+          <div class="stat-card__val">${fmt(d.dureeMoy)}</div>
+          <div class="stat-card__label">Durée moyenne</div>
+          <div class="stat-card__sub">Total : ${fmt(d.dureeTotal)}</div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="section">
+          <h3>Par répondant</h3>
+          ${repondants.length === 0
+            ? '<div class="empty">Aucune donnée</div>'
+            : repondants.map(([nom, v]) => `
+              <div class="stat-bar">
+                <div class="stat-bar__label" title="${nom}">${nom}</div>
+                <div class="stat-bar__track"><div class="stat-bar__fill" style="width:${Math.round(v.appels/maxAppels*100)}%;background:var(--blue)"></div></div>
+                <div class="stat-bar__val">${v.appels}</div>
+              </div>
+            `).join('')}
+        </div>
+
+        <div class="section">
+          <h3>Par jour</h3>
+          ${d.parJour.length === 0
+            ? '<div class="empty">Aucune donnée</div>'
+            : `<table>
+                <thead><tr><th>Date</th><th>Total</th><th>Décrochés</th><th>Taux</th></tr></thead>
+                <tbody>
+                  ${d.parJour.map(j => `
+                    <tr>
+                      <td>${new Date(j.date).toLocaleDateString('fr-FR', {weekday:'short', day:'2-digit', month:'short'})}</td>
+                      <td>${j.total}</td>
+                      <td>${j.decroches}</td>
+                      <td>${j.total > 0 ? Math.round(j.decroches/j.total*100) : 0}%</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>`}
+        </div>
+      </div>
+    `;
+  }
+
+  // Init
+  const now = new Date();
+  document.getElementById('to').value = now.toISOString().slice(0,10);
+  const weekAgo = new Date(now - 7*24*60*60*1000);
+  document.getElementById('from').value = weekAgo.toISOString().slice(0,10);
+
+  checkStatus();
+</script>
+</body>
+</html>
