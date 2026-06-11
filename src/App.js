@@ -432,7 +432,7 @@ function ContactTable({ contacts, onEdit, onDelete, customMotifs }) {
   return (
     <div className="table-wrapper">
       <table className="contacts-table">
-        <thead><tr><th>Date</th><th>Type</th><th>Artiste</th><th>Profil</th><th>Motif(s)</th><th>Mail</th><th>Qui</th><th>Remarques</th><th></th></tr></thead>
+        <thead><tr><th>Date</th><th>Type</th><th>Artiste</th><th>Profil</th><th>Motif(s)</th><th>Mail</th><th>Qui</th><th>Remarques</th><th>Suivi</th><th></th></tr></thead>
         <tbody>
           {contacts.map(row => (
             <tr key={row.id}>
@@ -444,6 +444,7 @@ function ContactTable({ contacts, onEdit, onDelete, customMotifs }) {
               <td className="td-mail">{row.mail ? <a href={`mailto:${row.mail}`}>{row.mail}</a> : '—'}</td>
               <td>{getQui(row)}</td>
               <td className="td-remarques" title={row.remarques}>{row.remarques || '—'}</td>
+              <td className="td-suivi" title={row.suivi}>{row.suivi ? <span className="suivi-badge">🔔 {row.suivi}</span> : '—'}</td>
               <td className="td-actions">
                 <button className="btn-icon" onClick={() => onEdit(row)} title="Modifier">✏️</button>
                 <button className="btn-icon btn-icon--del" onClick={() => onDelete(row.id)} title="Supprimer">🗑️</button>
@@ -505,9 +506,11 @@ export default function App() {
   const [stats, setStats] = useState(null);
   const [editing, setEditing] = useState(null);
   const [customMotifs, setCustomMotifs] = useState([]);
-  const [filters, setFilters] = useState({ type: '', from: '', to: '' });
+  const [filters, setFilters] = useState({ type: '', from: '', to: '', conseiller: '' });
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
   const [toast, setToast] = useState(null);
   const [showChangePwd, setShowChangePwd] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -569,15 +572,24 @@ export default function App() {
   useEffect(() => { if (token) { loadContacts(); loadCustomMotifs(); } }, [token, loadContacts, loadCustomMotifs]);
   useEffect(() => { if (token && view === 'stats') loadStats(); }, [token, view, loadStats]);
   useEffect(() => { if (token) loadContacts(); }, [filters]);
+  useEffect(() => { setPage(1); }, [search, filters]);
 
-  const filteredContacts = search.trim()
-    ? contacts.filter(c => {
-        const q = search.toLowerCase();
-        return (c.prenom || '').toLowerCase().includes(q)
-            || (c.nom || '').toLowerCase().includes(q)
-            || (c.mail || '').toLowerCase().includes(q);
-      })
-    : contacts;
+  const filteredContacts = contacts.filter(c => {
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      if (!(c.prenom || '').toLowerCase().includes(q) &&
+          !(c.nom || '').toLowerCase().includes(q) &&
+          !(c.mail || '').toLowerCase().includes(q)) return false;
+    }
+    if (filters.conseiller) {
+      const key = `qui_${filters.conseiller.toLowerCase()}`;
+      if (!c[key]) return false;
+    }
+    return true;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredContacts.length / PAGE_SIZE));
+  const pagedContacts = filteredContacts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   if (!token) return <LoginScreen onLogin={handleLogin} />;
 
@@ -652,9 +664,13 @@ export default function App() {
           <option value="TEL">Téléphone</option>
           <option value="PRES">Présentiel</option>
         </select>
+        <select value={filters.conseiller} onChange={e => setFilters(f => ({ ...f, conseiller: e.target.value }))}>
+          <option value="">Tous conseillers</option>
+          {CONSEILLERS.map(c => <option key={c.key} value={c.label}>{c.label}</option>)}
+        </select>
         <input type="date" value={filters.from} onChange={e => setFilters(f => ({ ...f, from: e.target.value }))} />
         <input type="date" value={filters.to}   onChange={e => setFilters(f => ({ ...f, to: e.target.value }))} />
-        <button className="btn btn--ghost btn--sm" onClick={() => { setFilters({ type: '', from: '', to: '' }); setSearch(''); }}>Réinitialiser</button>
+        <button className="btn btn--ghost btn--sm" onClick={() => { setFilters({ type: '', from: '', to: '', conseiller: '' }); setSearch(''); }}>Réinitialiser</button>
         <button className="btn btn--export btn--sm" onClick={handleExport}>⬇ Export CSV</button>
         <span className="filter-count">{filteredContacts.length} contact{filteredContacts.length > 1 ? 's' : ''}</span>
       </div>
@@ -674,7 +690,16 @@ export default function App() {
         )}
         {view === 'list' && !editing && (
           <section>
-            {loading ? <div className="loading">Chargement…</div> : <ContactTable contacts={filteredContacts} customMotifs={customMotifs} onEdit={row => setEditing(row)} onDelete={handleDelete} />}
+            {loading ? <div className="loading">Chargement…</div> : <>
+              <ContactTable contacts={pagedContacts} customMotifs={customMotifs} onEdit={row => setEditing(row)} onDelete={handleDelete} />
+              {totalPages > 1 && (
+                <div className="pagination">
+                  <button className="btn btn--ghost btn--sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Précédent</button>
+                  <span className="pagination__info">Page {page} / {totalPages} <span className="pagination__sub">({filteredContacts.length} contacts)</span></span>
+                  <button className="btn btn--ghost btn--sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Suivant →</button>
+                </div>
+              )}
+            </>}
           </section>
         )}
         {view === 'stats' && !editing && <section><Dashboard stats={stats} /></section>}
