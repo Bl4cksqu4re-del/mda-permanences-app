@@ -484,3 +484,10 @@ body.dark .toggle { background: #252836; border-color: #2a2d3e; color: #8888a8; 
 .fiche-qui { font-size: 12px; color: var(--muted); font-weight: 600; }
 .fiche-item__text { font-size: 13px; color: var(--text); margin-top: 4px; }
 .fiche-item__suivi { color: var(--blue); }
+
+/* Refresh indicator */
+.refresh-indicator {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: 4px;
+}
