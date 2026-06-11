@@ -14,7 +14,7 @@ const EMPTY_FORM = {
   mail: '', telephone: '',
   qui_ck: false, qui_kr: false, qui_lv: false, qui_vc: false, qui_cc: false,
   remarques: '', suivi: '', newsletter: false, comment_connu: '',
-  motifs_custom: []
+  motifs_custom: [], a_rappeler: false
 };
 
 const ID_FIELDS = [
@@ -414,7 +414,13 @@ function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifA
       <div className="field"><label>Suivi</label><textarea rows={2} value={form.suivi} onChange={e => set('suivi', e.target.value)} placeholder="À rappeler, transmis à…" /></div>
       <div className="form-row">
         <div className="field"><label>Comment nous ont-ils connu ?</label><input type="text" value={form.comment_connu} onChange={e => set('comment_connu', e.target.value)} placeholder="Cercle Pro, Internet…" /></div>
-        <div className="field field--center"><label>Newsletter</label><CheckPill label="Inscription NL" checked={!!form.newsletter} onChange={v => set('newsletter', v)} /></div>
+        <div className="field field--center">
+          <label>Options</label>
+          <div style={{display:'flex', gap:'8px', flexWrap:'wrap'}}>
+            <CheckPill label="Inscription NL" checked={!!form.newsletter} onChange={v => set('newsletter', v)} />
+            <CheckPill label="🔔 À rappeler" checked={!!form.a_rappeler} onChange={v => set('a_rappeler', v)} accent />
+          </div>
+        </div>
       </div>
       {error && <p className="form-error">{error}</p>}
       <div className="form-actions">
@@ -427,18 +433,42 @@ function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifA
   );
 }
 
-function ContactTable({ contacts, onEdit, onDelete, customMotifs }) {
+function ContactTable({ contacts, onEdit, onDelete, customMotifs, onFiche, toggleSort, sort }) {
+  function SortTh({ col, children }) {
+    const active = sort.col === col;
+    return (
+      <th onClick={() => toggleSort(col)} style={{cursor:'pointer', userSelect:'none'}}>
+        {children} {active ? (sort.dir === 'asc' ? '↑' : '↓') : <span style={{opacity:.3}}>↕</span>}
+      </th>
+    );
+  }
   if (!contacts.length) return <div className="empty-state">Aucun contact enregistré pour cette période.</div>;
   return (
     <div className="table-wrapper">
       <table className="contacts-table">
-        <thead><tr><th>Date</th><th>Type</th><th>Artiste</th><th>Profil</th><th>Motif(s)</th><th>Mail</th><th>Qui</th><th>Remarques</th><th>Suivi</th><th></th></tr></thead>
+        <thead><tr>
+          <SortTh col="date">Date</SortTh>
+          <th>Type</th>
+          <SortTh col="artiste">Artiste</SortTh>
+          <th>Profil</th>
+          <th>Motif(s)</th>
+          <th>Mail</th>
+          <SortTh col="qui">Qui</SortTh>
+          <th>Remarques</th>
+          <th>Suivi</th>
+          <th></th>
+        </tr></thead>
         <tbody>
           {contacts.map(row => (
-            <tr key={row.id}>
+            <tr key={row.id} className={row.a_rappeler ? 'tr--rappel' : ''}>
               <td className="td-date">{formatDate(row.date)}</td>
               <td><span className={`badge badge--${row.type.toLowerCase()}`}>{row.type}</span></td>
-              <td className="td-artiste">{[row.prenom, row.nom].filter(Boolean).join(' ') || '—'}</td>
+              <td className="td-artiste">
+                {[row.prenom, row.nom].filter(Boolean).join(' ')
+                  ? <button className="artiste-link" onClick={() => onFiche(`${row.prenom||''} ${row.nom||''}`.trim())}>{[row.prenom, row.nom].filter(Boolean).join(' ')}</button>
+                  : '—'}
+                {row.a_rappeler && <span className="rappel-dot" title="À rappeler">🔔</span>}
+              </td>
               <td className="td-profil">{getIdLabel(row)}</td>
               <td className="td-motif">{getMotifs(row, customMotifs)}</td>
               <td className="td-mail">{row.mail ? <a href={`mailto:${row.mail}`}>{row.mail}</a> : '—'}</td>
@@ -457,7 +487,40 @@ function ContactTable({ contacts, onEdit, onDelete, customMotifs }) {
   );
 }
 
-function StatBar({ label, value, max, color }) {
+function FicheArtiste({ nom, contacts, customMotifs, onClose, onEdit }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal modal--large" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>Historique — {nom}</h2>
+          <button className="btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <p className="modal-sub">{contacts.length} passage{contacts.length > 1 ? 's' : ''} en permanence</p>
+        {contacts.length === 0
+          ? <p className="empty-state">Aucun passage trouvé.</p>
+          : <div className="fiche-list">
+              {contacts.map(row => (
+                <div key={row.id} className={`fiche-item ${row.a_rappeler ? 'fiche-item--rappel' : ''}`}>
+                  <div className="fiche-item__header">
+                    <span className="td-date">{formatDate(row.date)}</span>
+                    <span className={`badge badge--${row.type.toLowerCase()}`}>{row.type}</span>
+                    <span className="fiche-qui">{getQui(row)}</span>
+                    {row.a_rappeler && <span className="rappel-dot">🔔 À rappeler</span>}
+                    <button className="btn-icon" onClick={() => { onEdit(row); onClose(); }} title="Modifier">✏️</button>
+                  </div>
+                  {row.remarques && <p className="fiche-item__text"><strong>Remarques :</strong> {row.remarques}</p>}
+                  {row.suivi && <p className="fiche-item__text fiche-item__suivi"><strong>Suivi :</strong> {row.suivi}</p>}
+                  {getMotifs(row, customMotifs) !== '—' && <p className="fiche-item__text"><strong>Motifs :</strong> {getMotifs(row, customMotifs)}</p>}
+                </div>
+              ))}
+            </div>
+        }
+      </div>
+    </div>
+  );
+}
+
+
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
     <div className="stat-bar">
@@ -506,10 +569,13 @@ export default function App() {
   const [stats, setStats] = useState(null);
   const [editing, setEditing] = useState(null);
   const [customMotifs, setCustomMotifs] = useState([]);
-  const [filters, setFilters] = useState({ type: '', from: '', to: '', conseiller: '' });
+  const [filters, setFilters] = useState({ type: '', from: '', to: '', conseiller: '', a_rappeler: false });
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState({ col: 'date', dir: 'desc' });
+  const [ficheArtiste, setFicheArtiste] = useState(null);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('mda_dark') === '1');
   const PAGE_SIZE = 50;
   const [toast, setToast] = useState(null);
   const [showChangePwd, setShowChangePwd] = useState(false);
@@ -574,6 +640,11 @@ export default function App() {
   useEffect(() => { if (token) loadContacts(); }, [filters]);
   useEffect(() => { setPage(1); }, [search, filters]);
 
+  useEffect(() => {
+    document.body.classList.toggle('dark', darkMode);
+    localStorage.setItem('mda_dark', darkMode ? '1' : '0');
+  }, [darkMode]);
+
   const filteredContacts = contacts.filter(c => {
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -585,11 +656,40 @@ export default function App() {
       const key = `qui_${filters.conseiller.toLowerCase()}`;
       if (!c[key]) return false;
     }
+    if (filters.a_rappeler && !c.a_rappeler) return false;
     return true;
+  }).sort((a, b) => {
+    let va = a[sort.col] || ''; let vb = b[sort.col] || '';
+    if (sort.col === 'date') { va = a.date || ''; vb = b.date || ''; }
+    if (sort.col === 'artiste') { va = `${a.prenom||''} ${a.nom||''}`.trim(); vb = `${b.prenom||''} ${b.nom||''}`.trim(); }
+    if (sort.col === 'qui') { va = getQui(a); vb = getQui(b); }
+    const cmp = va < vb ? -1 : va > vb ? 1 : 0;
+    return sort.dir === 'asc' ? cmp : -cmp;
   });
+
+  function toggleSort(col) {
+    setSort(s => s.col === col ? { col, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' });
+    setPage(1);
+  }
+
+  function SortTh({ col, children }) {
+    const active = sort.col === col;
+    return (
+      <th onClick={() => toggleSort(col)} style={{cursor:'pointer', userSelect:'none'}}>
+        {children} {active ? (sort.dir === 'asc' ? '↑' : '↓') : <span style={{opacity:.3}}>↕</span>}
+      </th>
+    );
+  }
 
   const totalPages = Math.max(1, Math.ceil(filteredContacts.length / PAGE_SIZE));
   const pagedContacts = filteredContacts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const ficheContacts = ficheArtiste
+    ? contacts.filter(c => {
+        const nom = `${c.prenom||''} ${c.nom||''}`.trim().toLowerCase();
+        return nom && nom === ficheArtiste.toLowerCase();
+      }).sort((a, b) => b.date.localeCompare(a.date))
+    : [];
 
   if (!token) return <LoginScreen onLogin={handleLogin} />;
 
@@ -619,12 +719,15 @@ export default function App() {
     if (filters.type) params.set('type', filters.type);
     if (filters.from) params.set('from', filters.from);
     if (filters.to)   params.set('to', filters.to);
+    if (filters.conseiller) params.set('conseiller', filters.conseiller);
+    if (filters.a_rappeler) params.set('a_rappeler', '1');
     window.open(`${API_URL}/export/csv?${params}`, '_blank');
   }
 
   return (
     <div className="app" onClick={() => setShowUserMenu(false)}>
       {toast && <div className={`toast toast--${toast.type}`}>{toast.msg}</div>}
+      {ficheArtiste && <FicheArtiste nom={ficheArtiste} contacts={ficheContacts} customMotifs={customMotifs} onClose={() => setFicheArtiste(null)} onEdit={row => { setEditing(row); setFicheArtiste(null); setView('list'); }} />}
       {showChangePwd && <ChangePasswordModal token={token} onClose={() => setShowChangePwd(false)} showToast={showToast} />}
 
       <header className="app-header">
@@ -670,8 +773,13 @@ export default function App() {
         </select>
         <input type="date" value={filters.from} onChange={e => setFilters(f => ({ ...f, from: e.target.value }))} />
         <input type="date" value={filters.to}   onChange={e => setFilters(f => ({ ...f, to: e.target.value }))} />
-        <button className="btn btn--ghost btn--sm" onClick={() => { setFilters({ type: '', from: '', to: '', conseiller: '' }); setSearch(''); }}>Réinitialiser</button>
+        <label className={`filter-toggle ${filters.a_rappeler ? 'filter-toggle--on' : ''}`}>
+          <input type="checkbox" checked={filters.a_rappeler} onChange={e => setFilters(f => ({ ...f, a_rappeler: e.target.checked }))} />
+          🔔 À rappeler
+        </label>
+        <button className="btn btn--ghost btn--sm" onClick={() => { setFilters({ type: '', from: '', to: '', conseiller: '', a_rappeler: false }); setSearch(''); }}>Réinitialiser</button>
         <button className="btn btn--export btn--sm" onClick={handleExport}>⬇ Export CSV</button>
+        <button className="btn btn--ghost btn--sm" onClick={() => setDarkMode(d => !d)} title="Mode sombre">{darkMode ? '☀️' : '🌙'}</button>
         <span className="filter-count">{filteredContacts.length} contact{filteredContacts.length > 1 ? 's' : ''}</span>
       </div>
 
@@ -691,7 +799,7 @@ export default function App() {
         {view === 'list' && !editing && (
           <section>
             {loading ? <div className="loading">Chargement…</div> : <>
-              <ContactTable contacts={pagedContacts} customMotifs={customMotifs} onEdit={row => setEditing(row)} onDelete={handleDelete} />
+              <ContactTable contacts={pagedContacts} customMotifs={customMotifs} onEdit={row => setEditing(row)} onDelete={handleDelete} onFiche={setFicheArtiste} toggleSort={toggleSort} sort={sort} />
               {totalPages > 1 && (
                 <div className="pagination">
                   <button className="btn btn--ghost btn--sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Précédent</button>
