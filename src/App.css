@@ -420,3 +420,28 @@ fieldset legend { font-size: 12px; font-weight: 700; text-transform: uppercase; 
 .admin-section h3 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 14px; }
 .admin-users { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
 .admin-form { display: flex; flex-direction: column; gap: 14px; }
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 0;
+}
+.pagination__info { font-size: 14px; font-weight: 600; color: var(--charbon); }
+.pagination__sub { font-weight: 400; color: var(--muted); font-size: 12px; }
+
+/* Suivi badge */
+.suivi-badge {
+  display: inline-block;
+  background: rgba(255,234,0,.25);
+  color: var(--charbon);
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
