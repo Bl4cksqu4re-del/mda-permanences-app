@@ -578,6 +578,7 @@ export default function App() {
   const [ficheArtiste, setFicheArtiste] = useState(null);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('mda_dark') === '1');
   const [lastRefresh, setLastRefresh] = useState(null);
+  const [checkinEnAttente, setCheckinEnAttente] = useState([]);
   const PAGE_SIZE = 50;
   const [toast, setToast] = useState(null);
   const [showChangePwd, setShowChangePwd] = useState(false);
@@ -585,7 +586,7 @@ export default function App() {
 
   function showToast(msg, type = 'success') {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), type === 'checkin' ? 6000 : 3000);
   }
 
   function handleLogin(t, user) {
@@ -605,6 +606,8 @@ export default function App() {
     [token]
   );
 
+  const prevContactsRef = React.useRef(null);
+
   const loadContacts = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
@@ -614,7 +617,19 @@ export default function App() {
     try {
       const res = await apiFetch(`${API_URL}/contacts?${params}`);
       if (res.status === 401) { handleLogout(); return; }
-      setContacts(await res.json());
+      const newContacts = await res.json();
+      // Détecter les nouveaux checkins tablette
+      if (prevContactsRef.current !== null) {
+        const prevIds = new Set(prevContactsRef.current.map(c => c.id));
+        const added = newContacts.filter(c =>
+          !prevIds.has(c.id) && (c.remarques || '').includes('[Enregistrement tablette accueil]')
+        );
+        if (added.length > 0) {
+          setCheckinEnAttente(prev => [...prev, ...added]);
+        }
+      }
+      prevContactsRef.current = newContacts;
+      setContacts(newContacts);
       setLastRefresh(new Date());
     } catch(e) { console.error(e); }
     finally { setLoading(false); }
@@ -799,6 +814,18 @@ export default function App() {
         )}
         {view === 'list' && !editing && (
           <section>
+            {checkinEnAttente.length > 0 && (
+              <div className="checkin-banner">
+                <span className="checkin-banner__icon">🔔</span>
+                <span className="checkin-banner__text">
+                  {checkinEnAttente.length === 1
+                    ? <>1 personne en attente — <strong>{[checkinEnAttente[0].prenom, checkinEnAttente[0].nom].filter(Boolean).join(' ') || 'Artiste'}</strong>{getMotifs(checkinEnAttente[0], customMotifs) !== '—' ? ` · ${getMotifs(checkinEnAttente[0], customMotifs)}` : ''}</>
+                    : <>{checkinEnAttente.length} personnes en attente : {checkinEnAttente.map(c => [c.prenom, c.nom].filter(Boolean).join(' ') || 'Artiste').join(', ')}</>
+                  }
+                </span>
+                <button className="checkin-banner__close" onClick={() => setCheckinEnAttente([])}>Marquer comme vu ✓</button>
+              </div>
+            )}
             {loading ? <div className="loading">Chargement…</div> : <>
               <ContactTable contacts={pagedContacts} customMotifs={customMotifs} onEdit={row => setEditing(row)} onDelete={handleDelete} onFiche={setFicheArtiste} toggleSort={toggleSort} sort={sort} />
               {totalPages > 1 && (
