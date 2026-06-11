@@ -491,3 +491,78 @@ body.dark .toggle { background: #252836; border-color: #2a2d3e; color: #8888a8; 
   color: var(--muted);
   margin-left: 4px;
 }
+
+/* Toast checkin */
+.toast--checkin {
+  background: var(--yellow);
+  color: var(--charbon);
+  font-size: 15px;
+  padding: 14px 22px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.25);
+}
+
+/* Bandeau checkin */
+.checkin-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--yellow);
+  color: var(--charbon);
+  padding: 16px 20px;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  box-shadow: 0 4px 16px rgba(255,234,0,.5);
+  animation: banner-in .3s ease;
+  border: 2px solid rgba(0,0,0,.1);
+}
+@keyframes banner-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.checkin-banner__icon { font-size: 28px; flex-shrink: 0; }
+.checkin-banner__body { flex: 1; }
+.checkin-banner__title { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+.checkin-banner__detail { font-size: 14px; color: rgba(0,0,0,.7); line-height: 1.5; }
+.checkin-banner__close {
+  background: var(--charbon); color: white; border: none;
+  padding: 10px 18px; border-radius: 20px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  white-space: nowrap; flex-shrink: 0;
+  transition: background .15s;
+}
+.checkin-banner__close:hover { background: #2d3248; }
+
+/* Compteurs du jour */
+.day-counters {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.day-counter {
+  flex: 1;
+  background: white;
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  box-shadow: var(--shadow);
+  border-left: 5px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.day-counter--total { border-color: var(--blue); }
+.day-counter--attente { border-color: var(--yellow); background: #fffde7; }
+.day-counter__val {
+  font-size: 48px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--charbon);
+}
+.day-counter--total .day-counter__val { color: var(--blue); }
+.day-counter--attente .day-counter__val { color: #7a5600; }
+.day-counter__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
