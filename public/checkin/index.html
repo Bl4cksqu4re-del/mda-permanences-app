@@ -8,48 +8,184 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --blue: #0004F2; --charbon: #1C1F2C; --yellow: #FFEA00;
-      --mint: #16E0BD; --border: #E2E2EB; --off: #F5F5F8;
-      --radius: 12px; --text: #1C1F2C; --muted: #6B6E82;
+      --mint: #16E0BD; --azure: #019DF1; --border: #E2E2EB;
+      --off: #F5F5F8; --radius: 14px; --text: #1C1F2C; --muted: #6B6E82;
     }
-    body { font-family: 'Segoe UI', Calibri, sans-serif; background: var(--off); color: var(--text); min-height: 100vh; font-size: 18px; }
-    header { background: var(--charbon); color: white; padding: 20px 32px; display: flex; align-items: center; gap: 16px; }
-    .logo { background: var(--blue); color: var(--yellow); font-weight: 800; font-size: 20px; letter-spacing: 3px; padding: 8px 12px; border-radius: 6px; }
-    .header-title { font-size: 18px; font-weight: 600; }
-    .header-sub { font-size: 13px; color: #aaa; }
-    main { max-width: 700px; margin: 0 auto; padding: 32px 24px 60px; }
-    h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; color: var(--charbon); }
-    .intro { color: var(--muted); font-size: 16px; margin-bottom: 32px; line-height: 1.5; }
-    .section { background: white; border-radius: var(--radius); padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,4,242,.06); }
-    .section-label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 14px; display: block; }
-    .field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-    .field label { font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
-    .field input { border: 1.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; font-size: 18px; font-family: inherit; color: var(--text); width: 100%; transition: border-color .15s; }
+    body {
+      font-family: 'Segoe UI', Calibri, sans-serif;
+      background: var(--off); color: var(--text);
+      min-height: 100vh; display: flex; flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      background: var(--charbon); color: white;
+      padding: 18px 32px; display: flex; align-items: center; gap: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.3);
+    }
+    .logo {
+      background: var(--blue); color: var(--yellow);
+      font-weight: 800; font-size: 18px; letter-spacing: 3px;
+      padding: 7px 11px; border-radius: 6px; flex-shrink: 0;
+    }
+    .header-title { font-size: 17px; font-weight: 700; }
+    .header-sub { font-size: 13px; color: #aaa; margin-top: 1px; }
+
+    /* Progress */
+    .progress-bar {
+      background: white; border-bottom: 1px solid var(--border);
+      padding: 16px 32px; display: flex; align-items: center; gap: 0;
+    }
+    .step-item {
+      display: flex; align-items: center; gap: 8px; flex: 1;
+    }
+    .step-item:last-child { flex: 0; }
+    .step-dot {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 2px solid var(--border); background: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: var(--muted);
+      flex-shrink: 0; transition: all .3s;
+    }
+    .step-dot.active { border-color: var(--blue); background: var(--blue); color: white; }
+    .step-dot.done { border-color: var(--mint); background: var(--mint); color: var(--charbon); }
+    .step-label { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+    .step-label.active { color: var(--blue); }
+    .step-line { flex: 1; height: 2px; background: var(--border); margin: 0 8px; transition: background .3s; }
+    .step-line.done { background: var(--mint); }
+
+    /* Main */
+    main { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: 32px 24px 60px; }
+    .step-panel { width: 100%; max-width: 600px; display: none; animation: fadeIn .25s ease; }
+    .step-panel.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .step-title { font-size: 24px; font-weight: 800; color: var(--charbon); margin-bottom: 6px; }
+    .step-sub { font-size: 15px; color: var(--muted); margin-bottom: 28px; line-height: 1.5; }
+
+    /* Card */
+    .card { background: white; border-radius: var(--radius); padding: 28px; box-shadow: 0 2px 16px rgba(0,4,242,.07); margin-bottom: 20px; }
+
+    /* Fields */
+    .field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+    .field:last-child { margin-bottom: 0; }
+    .field label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+    .field input {
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      padding: 15px 18px; font-size: 18px; font-family: inherit;
+      color: var(--text); width: 100%; transition: border-color .15s;
+      background: white;
+    }
     .field input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,4,242,.1); }
-    .choice-group { display: flex; flex-wrap: wrap; gap: 10px; }
-    .choice-btn { flex: 1; min-width: 140px; padding: 16px 12px; border: 2px solid var(--border); border-radius: var(--radius); background: white; font-size: 16px; font-family: inherit; font-weight: 600; color: var(--muted); cursor: pointer; text-align: center; transition: all .15s; }
-    .choice-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* Choice buttons */
+    .choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .choice-grid.col3 { grid-template-columns: 1fr 1fr 1fr; }
+    .choice-btn {
+      padding: 18px 12px; border: 2px solid var(--border);
+      border-radius: var(--radius); background: white;
+      font-size: 16px; font-family: inherit; font-weight: 600;
+      color: var(--muted); cursor: pointer; text-align: center;
+      transition: all .15s; line-height: 1.4;
+    }
+    .choice-btn .icon { font-size: 28px; display: block; margin-bottom: 6px; }
+    .choice-btn:hover { border-color: var(--blue); color: var(--blue); background: rgba(0,4,242,.03); }
     .choice-btn.active { background: var(--charbon); color: white; border-color: var(--charbon); }
+
+    /* Select */
+    .styled-select {
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      padding: 15px 18px; font-size: 17px; font-family: inherit;
+      color: var(--text); width: 100%; background: white;
+      appearance: none; cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B6E82' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+      padding-right: 40px;
+    }
+    .styled-select:focus { outline: none; border-color: var(--blue); }
+
+    /* Motifs */
     .motifs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .motif-check { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border: 2px solid var(--border); border-radius: var(--radius); cursor: pointer; font-size: 16px; font-family: inherit; transition: all .15s; user-select: none; }
-    .motif-check input { display: none; }
-    .check-box { width: 24px; height: 24px; border: 2px solid var(--border); border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .15s; }
-    .motif-check.checked { border-color: var(--blue); background: rgba(0,4,242,.04); }
-    .motif-check.checked .check-box { background: var(--blue); border-color: var(--blue); }
-    .motif-check.checked .check-box::after { content: 'checkmark'; color: white; font-size: 14px; font-weight: 700; }
-    select.activite-select { border: 1.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; font-size: 18px; font-family: inherit; color: var(--text); width: 100%; background: white; appearance: none; cursor: pointer; }
-    select.activite-select:focus { outline: none; border-color: var(--blue); }
-    .btn-submit { width: 100%; padding: 20px; background: var(--blue); color: white; border: none; border-radius: var(--radius); font-size: 20px; font-family: inherit; font-weight: 700; cursor: pointer; margin-top: 8px; transition: background .15s; }
-    .btn-submit:hover { background: #0003cc; }
-    .btn-submit:disabled { opacity: .5; cursor: not-allowed; }
-    .form-error { color: #c53030; background: #fff5f5; border: 1px solid #feb2b2; border-radius: var(--radius); padding: 12px 16px; font-size: 15px; margin-bottom: 16px; }
-    .confirmation { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 60px 32px; min-height: 60vh; }
-    .confirmation.visible { display: flex; }
-    .confirmation__icon { font-size: 80px; margin-bottom: 24px; }
-    .confirmation__title { font-size: 28px; font-weight: 800; color: var(--charbon); margin-bottom: 12px; }
-    .confirmation__text { font-size: 18px; color: var(--muted); line-height: 1.6; max-width: 480px; }
-    .confirmation__reset { margin-top: 40px; padding: 14px 32px; background: var(--charbon); color: white; border: none; border-radius: var(--radius); font-size: 16px; font-family: inherit; font-weight: 600; cursor: pointer; }
-    footer { text-align: center; padding: 20px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); margin-top: 40px; }
-    @media (max-width: 500px) { .motifs-grid { grid-template-columns: 1fr; } }
+    .motif-label {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; border: 2px solid var(--border);
+      border-radius: var(--radius); cursor: pointer;
+      font-size: 15px; font-family: inherit; font-weight: 500;
+      transition: all .15s; user-select: none; background: white;
+    }
+    .motif-label input { display: none; }
+    .motif-check-box {
+      width: 26px; height: 26px; border: 2px solid var(--border);
+      border-radius: 7px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .15s; font-size: 15px; color: transparent;
+    }
+    .motif-label:hover { border-color: var(--blue); background: rgba(0,4,242,.03); }
+    .motif-label.checked { border-color: var(--blue); background: rgba(0,4,242,.05); }
+    .motif-label.checked .motif-check-box { background: var(--blue); border-color: var(--blue); color: white; }
+
+    /* Navigation */
+    .step-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; gap: 12px; }
+    .btn-back {
+      padding: 14px 24px; border: 2px solid var(--border);
+      border-radius: var(--radius); background: white;
+      font-size: 16px; font-family: inherit; font-weight: 600;
+      color: var(--muted); cursor: pointer; transition: all .15s;
+    }
+    .btn-back:hover { border-color: var(--charbon); color: var(--charbon); }
+    .btn-next {
+      flex: 1; padding: 16px 24px; background: var(--blue); color: white;
+      border: none; border-radius: var(--radius);
+      font-size: 17px; font-family: inherit; font-weight: 700;
+      cursor: pointer; transition: background .15s;
+    }
+    .btn-next:hover { background: #0003cc; }
+    .btn-next:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-submit {
+      flex: 1; padding: 18px 24px; background: var(--mint); color: var(--charbon);
+      border: none; border-radius: var(--radius);
+      font-size: 18px; font-family: inherit; font-weight: 800;
+      cursor: pointer; transition: filter .15s;
+    }
+    .btn-submit:hover { filter: brightness(.92); }
+    .btn-submit:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Erreur */
+    .form-error {
+      color: #c53030; background: #fff5f5; border: 1.5px solid #feb2b2;
+      border-radius: var(--radius); padding: 12px 16px; font-size: 15px;
+      margin-bottom: 16px; display: none;
+    }
+
+    /* Confirmation */
+    #step-confirm {
+      display: none; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; padding: 60px 24px;
+    }
+    #step-confirm.active { display: flex; }
+    .confirm-icon { font-size: 80px; margin-bottom: 24px; }
+    .confirm-title { font-size: 30px; font-weight: 800; color: var(--charbon); margin-bottom: 12px; }
+    .confirm-text { font-size: 17px; color: var(--muted); line-height: 1.7; max-width: 440px; }
+    .btn-reset {
+      margin-top: 40px; padding: 16px 40px;
+      background: var(--charbon); color: white; border: none;
+      border-radius: var(--radius); font-size: 16px; font-family: inherit;
+      font-weight: 600; cursor: pointer;
+    }
+
+    footer {
+      text-align: center; padding: 16px; font-size: 12px;
+      color: var(--muted); border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 500px) {
+      .motifs-grid { grid-template-columns: 1fr; }
+      .choice-grid { grid-template-columns: 1fr; }
+      .choice-grid.col3 { grid-template-columns: 1fr; }
+      .progress-bar { padding: 12px 16px; }
+      .step-label { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -62,92 +198,253 @@
   </div>
 </header>
 
-<main id="main-content">
-  <h2>Bienvenue !</h2>
-  <p class="intro">Merci de remplir ce formulaire avant votre rendez-vous. Nos équipes vous prendront en charge dès que possible.</p>
-
-  <div id="error-box" class="form-error" style="display:none"></div>
-
-  <div class="section">
-    <span class="section-label">Vos coordonnées</span>
-    <div class="field"><label>Prénom *</label><input type="text" id="prenom" placeholder="Votre prénom" autocomplete="given-name" /></div>
-    <div class="field"><label>Nom *</label><input type="text" id="nom" placeholder="Votre nom" autocomplete="family-name" /></div>
-    <div class="field"><label>E-mail</label><input type="email" id="mail" placeholder="votre@email.com" autocomplete="email" /></div>
-    <div class="field"><label>Téléphone</label><input type="tel" id="telephone" placeholder="06 XX XX XX XX" autocomplete="tel" /></div>
+<div class="progress-bar" id="progress-bar">
+  <div class="step-item">
+    <div class="step-dot active" id="dot-1">1</div>
+    <span class="step-label active" id="lbl-1">Identité</span>
   </div>
-
-  <div class="section">
-    <span class="section-label">Vous êtes</span>
-    <div class="choice-group" id="profil-group">
-      <button class="choice-btn" data-value="artiste" onclick="selectProfil(this)">Artiste</button>
-      <button class="choice-btn" data-value="structure" onclick="selectProfil(this)">Structure</button>
-      <button class="choice-btn" data-value="autre" onclick="selectProfil(this)">Autre</button>
-    </div>
+  <div class="step-line" id="line-1"></div>
+  <div class="step-item">
+    <div class="step-dot" id="dot-2">2</div>
+    <span class="step-label" id="lbl-2">Profil</span>
   </div>
-
-  <div class="section">
-    <span class="section-label">Votre situation</span>
-    <div class="choice-group" id="adhesion-group">
-      <button class="choice-btn" data-value="adherent" onclick="selectAdhesion(this)">Adhérent·e MDA</button>
-      <button class="choice-btn" data-value="non_adherent" onclick="selectAdhesion(this)">Non-adhérent·e</button>
-    </div>
+  <div class="step-line" id="line-2"></div>
+  <div class="step-item">
+    <div class="step-dot" id="dot-3">3</div>
+    <span class="step-label" id="lbl-3">Activité</span>
   </div>
-
-  <div class="section">
-    <span class="section-label">Activité artistique</span>
-    <select class="activite-select" id="activite_type">
-      <option value="">-- Sélectionnez votre activité --</option>
-      <option value="Arts graphiques et plastiques">Arts graphiques et plastiques</option>
-      <option value="Ecrit">Écrit</option>
-      <option value="Musique et chorégraphie">Musique et chorégraphie</option>
-      <option value="Audiovisuelle">Audiovisuelle</option>
-      <option value="Photographie">Photographie</option>
-      <option value="Autre">Autre</option>
-    </select>
+  <div class="step-line" id="line-3"></div>
+  <div class="step-item">
+    <div class="step-dot" id="dot-4">4</div>
+    <span class="step-label" id="lbl-4">Motifs</span>
   </div>
-
-  <div class="section">
-    <span class="section-label">Objet de votre rendez-vous <span style="font-weight:400;text-transform:none;font-size:12px">(plusieurs choix possibles)</span></span>
-    <div class="motifs-grid">
-      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="declaration"><span class="check-box"></span>Déclaration d'activité</label>
-      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="adjonction"><span class="check-box"></span>Adjonction d'activité</label>
-      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="juridique"><span class="check-box"></span>Juridique</label>
-      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="social"><span class="check-box"></span>Social / Retraite</label>
-      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="comptable_fiscal"><span class="check-box"></span>Comptable / Fiscal</label>
-      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="communication"><span class="check-box"></span>Communication</label>
-      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="adhesion"><span class="check-box"></span>Adhésion</label>
-      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="activite_artistique"><span class="check-box"></span>Activité artistique</label>
-      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="autres"><span class="check-box"></span>Autre motif</label>
-    </div>
-  </div>
-
-  <button class="btn-submit" id="submit-btn" onclick="handleSubmit()">Confirmer mon arrivée</button>
-</main>
-
-<div class="confirmation" id="confirmation">
-  <div class="confirmation__icon">✅</div>
-  <div class="confirmation__title">Merci !</div>
-  <p class="confirmation__text">Votre arrivée a bien été enregistrée.<br>Nous vous prendrons en rendez-vous dès que possible.</p>
-  <button class="confirmation__reset" onclick="resetForm()">Nouvel enregistrement</button>
 </div>
+
+<main>
+
+  <!-- Étape 1 : Identité -->
+  <div class="step-panel active" id="step-1">
+    <div class="step-title">Bonjour !</div>
+    <p class="step-sub">Merci de renseigner vos coordonnées pour enregistrer votre arrivée.</p>
+    <div id="error-1" class="form-error"></div>
+    <div class="card">
+      <div class="field"><label>Prénom *</label><input type="text" id="prenom" placeholder="Votre prénom" autocomplete="given-name" /></div>
+      <div class="field"><label>Nom *</label><input type="text" id="nom" placeholder="Votre nom" autocomplete="family-name" /></div>
+      <div class="field"><label>E-mail</label><input type="email" id="mail" placeholder="votre@email.com" autocomplete="email" /></div>
+      <div class="field"><label>Téléphone</label><input type="tel" id="telephone" placeholder="06 XX XX XX XX" autocomplete="tel" /></div>
+    </div>
+    <div class="step-nav">
+      <button class="btn-next" onclick="goNext(1)">Continuer →</button>
+    </div>
+  </div>
+
+  <!-- Étape 2 : Profil -->
+  <div class="step-panel" id="step-2">
+    <div class="step-title">Votre profil</div>
+    <p class="step-sub">Quelques informations sur votre situation.</p>
+    <div id="error-2" class="form-error"></div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="field" style="margin-bottom:0">
+        <label style="margin-bottom:12px;display:block">Vous êtes *</label>
+        <div class="choice-grid col3" id="profil-group">
+          <button class="choice-btn" data-value="artiste" onclick="selectChoice('profil-group', this)">
+            <span class="icon">🎨</span>Artiste
+          </button>
+          <button class="choice-btn" data-value="structure" onclick="selectChoice('profil-group', this)">
+            <span class="icon">🏢</span>Structure
+          </button>
+          <button class="choice-btn" data-value="autre" onclick="selectChoice('profil-group', this)">
+            <span class="icon">👤</span>Autre
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="field" style="margin-bottom:0">
+        <label style="margin-bottom:12px;display:block">Votre situation *</label>
+        <div class="choice-grid" id="adhesion-group">
+          <button class="choice-btn" data-value="adherent" onclick="selectChoice('adhesion-group', this)">
+            <span class="icon">✅</span>Adhérent·e MDA
+          </button>
+          <button class="choice-btn" data-value="non_adherent" onclick="selectChoice('adhesion-group', this)">
+            <span class="icon">👋</span>Non-adhérent·e
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="step-nav">
+      <button class="btn-back" onclick="goBack(2)">← Retour</button>
+      <button class="btn-next" onclick="goNext(2)">Continuer →</button>
+    </div>
+  </div>
+
+  <!-- Étape 3 : Activité -->
+  <div class="step-panel" id="step-3">
+    <div class="step-title">Votre activité</div>
+    <p class="step-sub">Sélectionnez votre domaine artistique principal.</p>
+    <div class="card">
+      <select class="styled-select" id="activite_type">
+        <option value="">-- Sélectionnez votre activité --</option>
+        <option value="Arts graphiques et plastiques">Arts graphiques et plastiques</option>
+        <option value="Ecrit">Écrit</option>
+        <option value="Musique et chorégraphie">Musique et chorégraphie</option>
+        <option value="Audiovisuelle">Audiovisuelle</option>
+        <option value="Photographie">Photographie</option>
+        <option value="Autre">Autre</option>
+      </select>
+    </div>
+    <div class="step-nav">
+      <button class="btn-back" onclick="goBack(3)">← Retour</button>
+      <button class="btn-next" onclick="goNext(3)">Continuer →</button>
+    </div>
+  </div>
+
+  <!-- Étape 4 : Motifs -->
+  <div class="step-panel" id="step-4">
+    <div class="step-title">Objet de votre venue</div>
+    <p class="step-sub">Sélectionnez un ou plusieurs motifs de rendez-vous.</p>
+    <div id="error-4" class="form-error"></div>
+    <div class="card">
+      <div class="motifs-grid">
+        <label class="motif-label" onclick="toggleMotif(this)">
+          <input type="checkbox" value="declaration">
+          <span class="motif-check-box">✓</span>
+          Déclaration d'activité
+        </label>
+        <label class="motif-label" onclick="toggleMotif(this)">
+          <input type="checkbox" value="adjonction">
+          <span class="motif-check-box">✓</span>
+          Adjonction d'activité
+        </label>
+        <label class="motif-label" onclick="toggleMotif(this)">
+          <input type="checkbox" value="juridique">
+          <span class="motif-check-box">✓</span>
+          Juridique
+        </label>
+        <label class="motif-label" onclick="toggleMotif(this)">
+          <input type="checkbox" value="social">
+          <span class="motif-check-box">✓</span>
+          Social / Retraite
+        </label>
+        <label class="motif-label" onclick="toggleMotif(this)">
+          <input type="checkbox" value="comptable_fiscal">
+          <span class="motif-check-box">✓</span>
+          Comptable / Fiscal
+        </label>
+        <label class="motif-label" onclick="toggleMotif(this)">
+          <input type="checkbox" value="communication">
+          <span class="motif-check-box">✓</span>
+          Communication
+        </label>
+        <label class="motif-label" onclick="toggleMotif(this)">
+          <input type="checkbox" value="adhesion">
+          <span class="motif-check-box">✓</span>
+          Adhésion
+        </label>
+        <label class="motif-label" onclick="toggleMotif(this)">
+          <input type="checkbox" value="activite_artistique">
+          <span class="motif-check-box">✓</span>
+          Activité artistique
+        </label>
+        <label class="motif-label" onclick="toggleMotif(this)">
+          <input type="checkbox" value="autres">
+          <span class="motif-check-box">✓</span>
+          Autre motif
+        </label>
+      </div>
+    </div>
+    <div class="step-nav">
+      <button class="btn-back" onclick="goBack(4)">← Retour</button>
+      <button class="btn-submit" id="submit-btn" onclick="handleSubmit()">Confirmer mon arrivée ✓</button>
+    </div>
+  </div>
+
+  <!-- Confirmation -->
+  <div id="step-confirm">
+    <div class="confirm-icon">✅</div>
+    <div class="confirm-title">Merci !</div>
+    <p class="confirm-text">
+      Votre arrivée a bien été enregistrée.<br>
+      Nous vous prendrons en rendez-vous<br>dès que possible.
+    </p>
+    <button class="btn-reset" onclick="resetForm()">Nouvel enregistrement</button>
+  </div>
+
+</main>
 
 <footer>Tous droits réservés © Bl4cksquare · La Maison des Artistes · art. L111-1 du CPI</footer>
 
 <script>
   const API_URL = 'https://mda-permanences-api.onrender.com';
-  let profilSelected = null;
-  let adhesionSelected = null;
+  const TOTAL_STEPS = 4;
+  let currentStep = 1;
+  const selections = { profil: null, adhesion: null };
 
-  function selectProfil(btn) {
-    document.querySelectorAll('#profil-group .choice-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    profilSelected = btn.dataset.value;
+  function updateProgress(step) {
+    for (let i = 1; i <= TOTAL_STEPS; i++) {
+      const dot = document.getElementById('dot-' + i);
+      const lbl = document.getElementById('lbl-' + i);
+      if (i < step) {
+        dot.className = 'step-dot done'; dot.textContent = '✓';
+        lbl.className = 'step-label';
+      } else if (i === step) {
+        dot.className = 'step-dot active'; dot.textContent = i;
+        lbl.className = 'step-label active';
+      } else {
+        dot.className = 'step-dot'; dot.textContent = i;
+        lbl.className = 'step-label';
+      }
+      if (i < TOTAL_STEPS) {
+        document.getElementById('line-' + i).className = 'step-line' + (i < step ? ' done' : '');
+      }
+    }
   }
 
-  function selectAdhesion(btn) {
-    document.querySelectorAll('#adhesion-group .choice-btn').forEach(b => b.classList.remove('active'));
+  function showStep(n) {
+    document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('step-confirm').classList.remove('active');
+    const panel = document.getElementById('step-' + n);
+    if (panel) panel.classList.add('active');
+    updateProgress(n);
+    currentStep = n;
+    window.scrollTo(0, 0);
+  }
+
+  function showError(step, msg) {
+    const box = document.getElementById('error-' + step);
+    if (!box) return;
+    box.textContent = msg;
+    box.style.display = 'block';
+  }
+
+  function hideError(step) {
+    const box = document.getElementById('error-' + step);
+    if (box) box.style.display = 'none';
+  }
+
+  function goNext(step) {
+    hideError(step);
+    if (step === 1) {
+      const prenom = document.getElementById('prenom').value.trim();
+      const nom    = document.getElementById('nom').value.trim();
+      if (!prenom && !nom) { showError(1, "Merci d'indiquer au moins votre prénom ou votre nom."); return; }
+    }
+    if (step === 2) {
+      if (!selections.profil) { showError(2, "Merci de sélectionner votre type de profil."); return; }
+      if (!selections.adhesion) { showError(2, "Merci d'indiquer votre situation (adhérent·e ou non)."); return; }
+    }
+    showStep(step + 1);
+  }
+
+  function goBack(step) {
+    showStep(step - 1);
+  }
+
+  function selectChoice(groupId, btn) {
+    document.querySelectorAll('#' + groupId + ' .choice-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    adhesionSelected = btn.dataset.value;
+    if (groupId === 'profil-group') selections.profil = btn.dataset.value;
+    if (groupId === 'adhesion-group') selections.adhesion = btn.dataset.value;
   }
 
   function toggleMotif(label) {
@@ -156,37 +453,23 @@
     label.classList.toggle('checked', cb.checked);
   }
 
-  function showError(msg) {
-    const box = document.getElementById('error-box');
-    box.textContent = msg;
-    box.style.display = 'block';
-    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-
-  function hideError() {
-    document.getElementById('error-box').style.display = 'none';
-  }
-
   async function handleSubmit() {
-    hideError();
-    const prenom = document.getElementById('prenom').value.trim();
-    const nom    = document.getElementById('nom').value.trim();
-    if (!prenom && !nom) { showError("Merci d'indiquer au moins votre prénom ou votre nom."); return; }
-
+    hideError(4);
     const motifs = {};
-    document.querySelectorAll('.motif-check input[type=checkbox]').forEach(cb => {
+    document.querySelectorAll('.motif-label input[type=checkbox]').forEach(cb => {
       motifs['motif_' + cb.value] = cb.checked;
     });
 
     const payload = {
-      prenom, nom,
+      prenom:    document.getElementById('prenom').value.trim() || null,
+      nom:       document.getElementById('nom').value.trim() || null,
       mail:      document.getElementById('mail').value.trim() || null,
       telephone: document.getElementById('telephone').value.trim() || null,
       activite_type: document.getElementById('activite_type').value || null,
-      id_adherent:     adhesionSelected === 'adherent',
-      id_non_adherent: adhesionSelected === 'non_adherent',
-      id_structure:    profilSelected === 'structure',
-      id_autres:       profilSelected === 'autre',
+      id_adherent:     selections.adhesion === 'adherent',
+      id_non_adherent: selections.adhesion === 'non_adherent',
+      id_structure:    selections.profil === 'structure',
+      id_autres:       selections.profil === 'autre',
       ...motifs
     };
 
@@ -201,12 +484,13 @@
         body: JSON.stringify(payload)
       });
       if (!res.ok) throw new Error('Erreur serveur');
-      document.getElementById('main-content').style.display = 'none';
-      document.getElementById('confirmation').classList.add('visible');
+      document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('progress-bar').style.display = 'none';
+      document.getElementById('step-confirm').classList.add('active');
     } catch(e) {
-      showError("Une erreur est survenue. Merci de réessayer ou d'informer l'accueil.");
+      showError(4, "Une erreur est survenue. Merci de réessayer ou d'informer l'accueil.");
       btn.disabled = false;
-      btn.textContent = 'Confirmer mon arrivée';
+      btn.textContent = 'Confirmer mon arrivée ✓';
     }
   }
 
@@ -216,16 +500,15 @@
     document.getElementById('mail').value = '';
     document.getElementById('telephone').value = '';
     document.getElementById('activite_type').value = '';
-    profilSelected = null; adhesionSelected = null;
+    selections.profil = null; selections.adhesion = null;
     document.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.motif-check').forEach(l => {
+    document.querySelectorAll('.motif-label').forEach(l => {
       l.classList.remove('checked');
       l.querySelector('input').checked = false;
     });
-    document.getElementById('confirmation').classList.remove('visible');
-    document.getElementById('main-content').style.display = 'block';
-    hideError();
-    window.scrollTo(0, 0);
+    document.getElementById('progress-bar').style.display = 'flex';
+    document.getElementById('step-confirm').classList.remove('active');
+    showStep(1);
   }
 </script>
 </body>
