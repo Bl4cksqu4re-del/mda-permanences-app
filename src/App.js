@@ -577,6 +577,7 @@ export default function App() {
   const [sort, setSort] = useState({ col: 'date', dir: 'desc' });
   const [ficheArtiste, setFicheArtiste] = useState(null);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('mda_dark') === '1');
+  const [lastRefresh, setLastRefresh] = useState(null);
   const PAGE_SIZE = 50;
   const [toast, setToast] = useState(null);
   const [showChangePwd, setShowChangePwd] = useState(false);
@@ -614,6 +615,7 @@ export default function App() {
       const res = await apiFetch(`${API_URL}/contacts?${params}`);
       if (res.status === 401) { handleLogout(); return; }
       setContacts(await res.json());
+      setLastRefresh(new Date());
     } catch(e) { console.error(e); }
     finally { setLoading(false); }
   }, [filters, apiFetch]);
@@ -640,6 +642,12 @@ export default function App() {
   useEffect(() => { if (token && view === 'stats') loadStats(); }, [token, view, loadStats]);
   useEffect(() => { if (token) loadContacts(); }, [filters]);
   useEffect(() => { setPage(1); }, [search, filters]);
+
+  useEffect(() => {
+    if (!token || view !== 'list') return;
+    const interval = setInterval(() => loadContacts(), 20000);
+    return () => clearInterval(interval);
+  }, [token, view, loadContacts]);
 
   useEffect(() => {
     document.body.classList.toggle('dark', darkMode);
@@ -773,6 +781,7 @@ export default function App() {
         <button className="btn btn--export btn--sm" onClick={handleExport}>⬇ Export CSV</button>
         <button className="btn btn--ghost btn--sm" onClick={() => setDarkMode(d => !d)} title="Mode sombre">{darkMode ? '☀️' : '🌙'}</button>
         <span className="filter-count">{filteredContacts.length} contact{filteredContacts.length > 1 ? 's' : ''}</span>
+        {lastRefresh && <span className="refresh-indicator" title="Mis à jour automatiquement toutes les 20s">🔄 {lastRefresh.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>}
       </div>
 
       <main className="app-main">
