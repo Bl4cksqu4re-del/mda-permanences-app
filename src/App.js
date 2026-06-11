@@ -835,15 +835,33 @@ export default function App() {
         )}
         {view === 'list' && !editing && (
           <section>
+            <div className="day-counters">
+              <div className="day-counter day-counter--total">
+                <div className="day-counter__val">
+                  {contacts.filter(c => c.date && c.date.slice(0,10) === new Date().toISOString().slice(0,10)).length}
+                </div>
+                <div className="day-counter__label">Rendez-vous aujourd'hui</div>
+              </div>
+              <div className="day-counter day-counter--attente">
+                <div className="day-counter__val">{checkinEnAttente.length}</div>
+                <div className="day-counter__label">En attente</div>
+              </div>
+            </div>
             {checkinEnAttente.length > 0 && (
               <div className="checkin-banner">
                 <span className="checkin-banner__icon">🔔</span>
-                <span className="checkin-banner__text">
-                  {checkinEnAttente.length === 1
-                    ? <>1 personne en attente — <strong>{[checkinEnAttente[0].prenom, checkinEnAttente[0].nom].filter(Boolean).join(' ') || 'Artiste'}</strong>{getMotifs(checkinEnAttente[0], customMotifs) !== '—' ? ` · ${getMotifs(checkinEnAttente[0], customMotifs)}` : ''}</>
-                    : <>{checkinEnAttente.length} personnes en attente : {checkinEnAttente.map(c => [c.prenom, c.nom].filter(Boolean).join(' ') || 'Artiste').join(', ')}</>
-                  }
-                </span>
+                <div className="checkin-banner__body">
+                  <div className="checkin-banner__title">
+                    {checkinEnAttente.length === 1 ? '1 personne en attente de rendez-vous' : `${checkinEnAttente.length} personnes en attente de rendez-vous`}
+                  </div>
+                  <div className="checkin-banner__detail">
+                    {checkinEnAttente.map((c, i) => {
+                      const nom = [c.prenom, c.nom].filter(Boolean).join(' ') || 'Artiste sans nom';
+                      const motifs = getMotifs(c, customMotifs);
+                      return <span key={c.id}>{i > 0 ? ' · ' : ''}<strong>{nom}</strong>{motifs !== '—' ? ` — ${motifs}` : ''}</span>;
+                    })}
+                  </div>
+                </div>
                 <button className="checkin-banner__close" onClick={() => setCheckinEnAttente([])}>Marquer comme vu ✓</button>
               </div>
             )}
