@@ -521,6 +521,7 @@ function FicheArtiste({ nom, contacts, customMotifs, onClose, onEdit }) {
 }
 
 
+function StatBar({ label, value, max, color }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
     <div className="stat-bar">
@@ -670,15 +671,6 @@ export default function App() {
   function toggleSort(col) {
     setSort(s => s.col === col ? { col, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' });
     setPage(1);
-  }
-
-  function SortTh({ col, children }) {
-    const active = sort.col === col;
-    return (
-      <th onClick={() => toggleSort(col)} style={{cursor:'pointer', userSelect:'none'}}>
-        {children} {active ? (sort.dir === 'asc' ? '↑' : '↓') : <span style={{opacity:.3}}>↕</span>}
-      </th>
-    );
   }
 
   const totalPages = Math.max(1, Math.ceil(filteredContacts.length / PAGE_SIZE));
