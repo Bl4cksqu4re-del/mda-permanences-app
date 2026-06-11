@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Accueil — La Maison des Artistes</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #0004F2; --charbon: #1C1F2C; --yellow: #FFEA00;
+      --mint: #16E0BD; --border: #E2E2EB; --off: #F5F5F8;
+      --radius: 12px; --text: #1C1F2C; --muted: #6B6E82;
+    }
+    body { font-family: 'Segoe UI', Calibri, sans-serif; background: var(--off); color: var(--text); min-height: 100vh; font-size: 18px; }
+    header { background: var(--charbon); color: white; padding: 20px 32px; display: flex; align-items: center; gap: 16px; }
+    .logo { background: var(--blue); color: var(--yellow); font-weight: 800; font-size: 20px; letter-spacing: 3px; padding: 8px 12px; border-radius: 6px; }
+    .header-title { font-size: 18px; font-weight: 600; }
+    .header-sub { font-size: 13px; color: #aaa; }
+    main { max-width: 700px; margin: 0 auto; padding: 32px 24px 60px; }
+    h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; color: var(--charbon); }
+    .intro { color: var(--muted); font-size: 16px; margin-bottom: 32px; line-height: 1.5; }
+    .section { background: white; border-radius: var(--radius); padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,4,242,.06); }
+    .section-label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 14px; display: block; }
+    .field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .field label { font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .field input { border: 1.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; font-size: 18px; font-family: inherit; color: var(--text); width: 100%; transition: border-color .15s; }
+    .field input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,4,242,.1); }
+    .choice-group { display: flex; flex-wrap: wrap; gap: 10px; }
+    .choice-btn { flex: 1; min-width: 140px; padding: 16px 12px; border: 2px solid var(--border); border-radius: var(--radius); background: white; font-size: 16px; font-family: inherit; font-weight: 600; color: var(--muted); cursor: pointer; text-align: center; transition: all .15s; }
+    .choice-btn:hover { border-color: var(--blue); color: var(--blue); }
+    .choice-btn.active { background: var(--charbon); color: white; border-color: var(--charbon); }
+    .motifs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .motif-check { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border: 2px solid var(--border); border-radius: var(--radius); cursor: pointer; font-size: 16px; font-family: inherit; transition: all .15s; user-select: none; }
+    .motif-check input { display: none; }
+    .check-box { width: 24px; height: 24px; border: 2px solid var(--border); border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+    .motif-check.checked { border-color: var(--blue); background: rgba(0,4,242,.04); }
+    .motif-check.checked .check-box { background: var(--blue); border-color: var(--blue); }
+    .motif-check.checked .check-box::after { content: 'checkmark'; color: white; font-size: 14px; font-weight: 700; }
+    select.activite-select { border: 1.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; font-size: 18px; font-family: inherit; color: var(--text); width: 100%; background: white; appearance: none; cursor: pointer; }
+    select.activite-select:focus { outline: none; border-color: var(--blue); }
+    .btn-submit { width: 100%; padding: 20px; background: var(--blue); color: white; border: none; border-radius: var(--radius); font-size: 20px; font-family: inherit; font-weight: 700; cursor: pointer; margin-top: 8px; transition: background .15s; }
+    .btn-submit:hover { background: #0003cc; }
+    .btn-submit:disabled { opacity: .5; cursor: not-allowed; }
+    .form-error { color: #c53030; background: #fff5f5; border: 1px solid #feb2b2; border-radius: var(--radius); padding: 12px 16px; font-size: 15px; margin-bottom: 16px; }
+    .confirmation { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 60px 32px; min-height: 60vh; }
+    .confirmation.visible { display: flex; }
+    .confirmation__icon { font-size: 80px; margin-bottom: 24px; }
+    .confirmation__title { font-size: 28px; font-weight: 800; color: var(--charbon); margin-bottom: 12px; }
+    .confirmation__text { font-size: 18px; color: var(--muted); line-height: 1.6; max-width: 480px; }
+    .confirmation__reset { margin-top: 40px; padding: 14px 32px; background: var(--charbon); color: white; border: none; border-radius: var(--radius); font-size: 16px; font-family: inherit; font-weight: 600; cursor: pointer; }
+    footer { text-align: center; padding: 20px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); margin-top: 40px; }
+    @media (max-width: 500px) { .motifs-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">MDA</div>
+  <div>
+    <div class="header-title">La Maison des Artistes</div>
+    <div class="header-sub">Enregistrement — Accueil</div>
+  </div>
+</header>
+
+<main id="main-content">
+  <h2>Bienvenue !</h2>
+  <p class="intro">Merci de remplir ce formulaire avant votre rendez-vous. Nos équipes vous prendront en charge dès que possible.</p>
+
+  <div id="error-box" class="form-error" style="display:none"></div>
+
+  <div class="section">
+    <span class="section-label">Vos coordonnées</span>
+    <div class="field"><label>Prénom *</label><input type="text" id="prenom" placeholder="Votre prénom" autocomplete="given-name" /></div>
+    <div class="field"><label>Nom *</label><input type="text" id="nom" placeholder="Votre nom" autocomplete="family-name" /></div>
+    <div class="field"><label>E-mail</label><input type="email" id="mail" placeholder="votre@email.com" autocomplete="email" /></div>
+    <div class="field"><label>Téléphone</label><input type="tel" id="telephone" placeholder="06 XX XX XX XX" autocomplete="tel" /></div>
+  </div>
+
+  <div class="section">
+    <span class="section-label">Vous êtes</span>
+    <div class="choice-group" id="profil-group">
+      <button class="choice-btn" data-value="artiste" onclick="selectProfil(this)">Artiste</button>
+      <button class="choice-btn" data-value="structure" onclick="selectProfil(this)">Structure</button>
+      <button class="choice-btn" data-value="autre" onclick="selectProfil(this)">Autre</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <span class="section-label">Votre situation</span>
+    <div class="choice-group" id="adhesion-group">
+      <button class="choice-btn" data-value="adherent" onclick="selectAdhesion(this)">Adhérent·e MDA</button>
+      <button class="choice-btn" data-value="non_adherent" onclick="selectAdhesion(this)">Non-adhérent·e</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <span class="section-label">Activité artistique</span>
+    <select class="activite-select" id="activite_type">
+      <option value="">-- Sélectionnez votre activité --</option>
+      <option value="Arts graphiques et plastiques">Arts graphiques et plastiques</option>
+      <option value="Ecrit">Écrit</option>
+      <option value="Musique et chorégraphie">Musique et chorégraphie</option>
+      <option value="Audiovisuelle">Audiovisuelle</option>
+      <option value="Photographie">Photographie</option>
+      <option value="Autre">Autre</option>
+    </select>
+  </div>
+
+  <div class="section">
+    <span class="section-label">Objet de votre rendez-vous <span style="font-weight:400;text-transform:none;font-size:12px">(plusieurs choix possibles)</span></span>
+    <div class="motifs-grid">
+      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="declaration"><span class="check-box"></span>Déclaration d'activité</label>
+      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="adjonction"><span class="check-box"></span>Adjonction d'activité</label>
+      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="juridique"><span class="check-box"></span>Juridique</label>
+      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="social"><span class="check-box"></span>Social / Retraite</label>
+      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="comptable_fiscal"><span class="check-box"></span>Comptable / Fiscal</label>
+      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="communication"><span class="check-box"></span>Communication</label>
+      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="adhesion"><span class="check-box"></span>Adhésion</label>
+      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="activite_artistique"><span class="check-box"></span>Activité artistique</label>
+      <label class="motif-check" onclick="toggleMotif(this)"><input type="checkbox" value="autres"><span class="check-box"></span>Autre motif</label>
+    </div>
+  </div>
+
+  <button class="btn-submit" id="submit-btn" onclick="handleSubmit()">Confirmer mon arrivée</button>
+</main>
+
+<div class="confirmation" id="confirmation">
+  <div class="confirmation__icon">✅</div>
+  <div class="confirmation__title">Merci !</div>
+  <p class="confirmation__text">Votre arrivée a bien été enregistrée.<br>Nous vous prendrons en rendez-vous dès que possible.</p>
+  <button class="confirmation__reset" onclick="resetForm()">Nouvel enregistrement</button>
+</div>
+
+<footer>Tous droits réservés © Bl4cksquare · La Maison des Artistes · art. L111-1 du CPI</footer>
+
+<script>
+  const API_URL = 'https://mda-permanences-api.onrender.com';
+  let profilSelected = null;
+  let adhesionSelected = null;
+
+  function selectProfil(btn) {
+    document.querySelectorAll('#profil-group .choice-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    profilSelected = btn.dataset.value;
+  }
+
+  function selectAdhesion(btn) {
+    document.querySelectorAll('#adhesion-group .choice-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    adhesionSelected = btn.dataset.value;
+  }
+
+  function toggleMotif(label) {
+    const cb = label.querySelector('input[type=checkbox]');
+    cb.checked = !cb.checked;
+    label.classList.toggle('checked', cb.checked);
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('error-box');
+    box.textContent = msg;
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function hideError() {
+    document.getElementById('error-box').style.display = 'none';
+  }
+
+  async function handleSubmit() {
+    hideError();
+    const prenom = document.getElementById('prenom').value.trim();
+    const nom    = document.getElementById('nom').value.trim();
+    if (!prenom && !nom) { showError("Merci d'indiquer au moins votre prénom ou votre nom."); return; }
+
+    const motifs = {};
+    document.querySelectorAll('.motif-check input[type=checkbox]').forEach(cb => {
+      motifs['motif_' + cb.value] = cb.checked;
+    });
+
+    const payload = {
+      prenom, nom,
+      mail:      document.getElementById('mail').value.trim() || null,
+      telephone: document.getElementById('telephone').value.trim() || null,
+      activite_type: document.getElementById('activite_type').value || null,
+      id_adherent:     adhesionSelected === 'adherent',
+      id_non_adherent: adhesionSelected === 'non_adherent',
+      id_structure:    profilSelected === 'structure',
+      id_autres:       profilSelected === 'autre',
+      ...motifs
+    };
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Envoi en cours...';
+
+    try {
+      const res = await fetch(API_URL + '/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('Erreur serveur');
+      document.getElementById('main-content').style.display = 'none';
+      document.getElementById('confirmation').classList.add('visible');
+    } catch(e) {
+      showError("Une erreur est survenue. Merci de réessayer ou d'informer l'accueil.");
+      btn.disabled = false;
+      btn.textContent = 'Confirmer mon arrivée';
+    }
+  }
+
+  function resetForm() {
+    document.getElementById('prenom').value = '';
+    document.getElementById('nom').value = '';
+    document.getElementById('mail').value = '';
+    document.getElementById('telephone').value = '';
+    document.getElementById('activite_type').value = '';
+    profilSelected = null; adhesionSelected = null;
+    document.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.motif-check').forEach(l => {
+      l.classList.remove('checked');
+      l.querySelector('input').checked = false;
+    });
+    document.getElementById('confirmation').classList.remove('visible');
+    document.getElementById('main-content').style.display = 'block';
+    hideError();
+    window.scrollTo(0, 0);
+  }
+</script>
+</body>
+</html>
