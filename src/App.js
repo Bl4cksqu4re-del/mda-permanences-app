@@ -12,7 +12,7 @@ const EMPTY_FORM = {
   motif_social: false, motif_comptable_fiscal: false, motif_communication: false,
   motif_adhesion: false, motif_activite_artistique: false, motif_autres: false,
   mail: '', telephone: '',
-  qui_ck: false, qui_kr: false, qui_lv: false,
+  qui_ck: false, qui_kr: false, qui_lv: false, qui_vc: false, qui_cc: false,
   remarques: '', suivi: '', newsletter: false, comment_connu: '',
   motifs_custom: []
 };
@@ -62,7 +62,7 @@ function getIdLabel(row) {
 }
 
 function getQui(row) {
-  return [row.qui_ck && 'CK', row.qui_kr && 'KR', row.qui_lv && 'LV'].filter(Boolean).join(', ') || '—';
+  return [row.qui_ck && 'CK', row.qui_kr && 'KR', row.qui_lv && 'LV', row.qui_vc && 'VC', row.qui_cc && 'CC'].filter(Boolean).join(', ') || '—';
 }
 
 function Footer() {
@@ -286,7 +286,7 @@ function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifA
       <fieldset>
         <legend>Conseiller·ère</legend>
         <div className="pills-row">
-          {[['qui_ck','CK'],['qui_kr','KR'],['qui_lv','LV']].map(([k,l]) => (
+          {[['qui_ck','CK'],['qui_kr','KR'],['qui_lv','LV'],['qui_vc','VC'],['qui_cc','CC']].map(([k,l]) => (
             <CheckPill key={k} label={l} checked={!!form[k]} onChange={v => set(k, v)} />
           ))}
         </div>
@@ -392,8 +392,8 @@ function Dashboard({ stats }) {
       </div>
       <div className="stats-section">
         <h3>Par conseiller·ère</h3>
-        {[['ck','CK'],['kr','KR'],['lv','LV']].map(([k,l]) => (
-          <StatBar key={k} label={l} value={Number(qui[k])||0} max={Math.max(Number(qui.ck)||0, Number(qui.kr)||0, Number(qui.lv)||0, 1)} color="var(--yellow)" />
+        {[['ck','CK'],['kr','KR'],['lv','LV'],['vc','VC'],['cc','CC']].map(([k,l]) => (
+          <StatBar key={k} label={l} value={Number(qui[k])||0} max={Math.max(Number(qui.ck)||0, Number(qui.kr)||0, Number(qui.lv)||0, Number(qui.vc)||0, Number(qui.cc)||0, 1)} color="var(--yellow)" />
         ))}
       </div>
     </div>
