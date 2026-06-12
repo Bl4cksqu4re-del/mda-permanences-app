@@ -501,36 +501,44 @@ body.dark .toggle { background: #252836; border-color: #2a2d3e; color: #8888a8; 
   box-shadow: 0 4px 20px rgba(0,0,0,.25);
 }
 
-/* Bandeau checkin */
-.checkin-banner {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: var(--yellow);
-  color: var(--charbon);
-  padding: 16px 20px;
+/* Liste checkin individuelle */
+.checkin-list {
+  background: white;
+  border: 2px solid var(--yellow);
   border-radius: var(--radius);
   margin-bottom: 16px;
-  box-shadow: 0 4px 16px rgba(255,234,0,.5);
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(255,234,0,.3);
   animation: banner-in .3s ease;
-  border: 2px solid rgba(0,0,0,.1);
 }
 @keyframes banner-in {
   from { opacity: 0; transform: translateY(-8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.checkin-banner__icon { font-size: 28px; flex-shrink: 0; }
-.checkin-banner__body { flex: 1; }
-.checkin-banner__title { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
-.checkin-banner__detail { font-size: 14px; color: rgba(0,0,0,.7); line-height: 1.5; }
-.checkin-banner__close {
-  background: var(--charbon); color: white; border: none;
-  padding: 10px 18px; border-radius: 20px;
+.checkin-list__header {
+  background: var(--yellow);
+  color: var(--charbon);
+  padding: 12px 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.checkin-list__icon { font-size: 20px; }
+.checkin-list__title { font-size: 15px; font-weight: 800; }
+.checkin-item {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.checkin-item:last-child { border-bottom: none; }
+.checkin-item__info { font-size: 14px; color: var(--text); }
+.checkin-item__motifs { color: var(--muted); }
+.checkin-item__btn {
+  background: var(--mint); color: var(--charbon); border: none;
+  padding: 9px 16px; border-radius: 20px;
   font-size: 13px; font-weight: 700; cursor: pointer;
   white-space: nowrap; flex-shrink: 0;
-  transition: background .15s;
+  transition: filter .15s;
 }
-.checkin-banner__close:hover { background: #2d3248; }
+.checkin-item__btn:hover { filter: brightness(.92); }
 
 /* Compteurs du jour */
 .day-counters {
