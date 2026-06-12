@@ -890,21 +890,29 @@ export default function App() {
                 </div>
               </div>
             )}
-              <div className="checkin-banner">
-                <span className="checkin-banner__icon">🔔</span>
-                <div className="checkin-banner__body">
-                  <div className="checkin-banner__title">
+            {checkinEnAttente.length > 0 && (
+              <div className="checkin-list">
+                <div className="checkin-list__header">
+                  <span className="checkin-list__icon">🔔</span>
+                  <span className="checkin-list__title">
                     {checkinEnAttente.length === 1 ? '1 personne en attente de rendez-vous' : `${checkinEnAttente.length} personnes en attente de rendez-vous`}
-                  </div>
-                  <div className="checkin-banner__detail">
-                    {checkinEnAttente.map((c, i) => {
-                      const nom = [c.prenom, c.nom].filter(Boolean).join(' ') || 'Artiste sans nom';
-                      const motifs = getMotifs(c, customMotifs);
-                      return <span key={c.id}>{i > 0 ? ' · ' : ''}<strong>{nom}</strong>{motifs !== '—' ? ` — ${motifs}` : ''}</span>;
-                    })}
-                  </div>
+                  </span>
                 </div>
-                <button className="checkin-banner__close" onClick={() => setCheckinEnAttente([])}>Marquer comme vu ✓</button>
+                {checkinEnAttente.map(c => {
+                  const nom = [c.prenom, c.nom].filter(Boolean).join(' ') || 'Artiste sans nom';
+                  const motifs = getMotifs(c, customMotifs);
+                  return (
+                    <div key={c.id} className="checkin-item">
+                      <div className="checkin-item__info">
+                        <strong>{nom}</strong>
+                        {motifs !== '—' && <span className="checkin-item__motifs"> — {motifs}</span>}
+                      </div>
+                      <button className="checkin-item__btn" onClick={() => setCheckinEnAttente(prev => prev.filter(x => x.id !== c.id))}>
+                        Pris en charge ✓
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
             {loading ? <div className="loading">Chargement…</div> : <>
