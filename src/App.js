@@ -568,6 +568,297 @@ function Dashboard({ stats }) {
   );
 }
 
+const MOTIFS_TEMPS = [
+  { value: 'CP', label: 'Congé payé' },
+  { value: 'RTT', label: 'RTT / Récupération' },
+  { value: 'MALADIE', label: 'Maladie' },
+  { value: 'FERIE', label: 'Jour férié' },
+  { value: 'MEDICAL', label: 'Médical' },
+  { value: 'AUTRE', label: 'Autre' },
+];
+
+function getMoisActuel() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+}
+
+function getDaysInMonth(mois) {
+  const [y, m] = mois.split('-').map(Number);
+  const days = [];
+  const last = new Date(y, m, 0).getDate();
+  for (let d = 1; d <= last; d++) {
+    const date = new Date(y, m-1, d);
+    days.push({
+      date: `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`,
+      dayName: date.toLocaleDateString('fr-FR', { weekday: 'short' }),
+      dayNum: d,
+      isWeekend: date.getDay() === 0 || date.getDay() === 6
+    });
+  }
+  return days;
+}
+
+function TimesheetView({ token, currentUser, showToast }) {
+  const [mois, setMois] = useState(getMoisActuel());
+  const [entries, setEntries] = useState({});
+  const [locked, setLocked] = useState(false);
+  const [holidays, setHolidays] = useState(new Set());
+  const [loading, setLoading] = useState(true);
+  const [userInfo, setUserInfo] = useState(null);
+  const [adminSummary, setAdminSummary] = useState(null);
+  const [adminMois, setAdminMois] = useState(getMoisActuel());
+  const [viewMode, setViewMode] = useState('mine'); // 'mine' | 'admin'
+  const [adminTargetUser, setAdminTargetUser] = useState(null);
+  const [editingContrat, setEditingContrat] = useState(null);
+
+  const apiFetch = useCallback((url, options = {}) =>
+    fetch(url, { ...options, headers: { 'Content-Type': 'application/json', 'Authorization': token, ...(options.headers||{}) } }),
+    [token]
+  );
+
+  const loadEntries = useCallback(async (targetUserId = null) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ mois });
+      if (targetUserId) params.set('user_id', targetUserId);
+      const res = await apiFetch(`${API_URL}/timesheet/entries?${params}`);
+      const data = await res.json();
+      const map = {};
+      (data.entries || []).forEach(e => { map[e.date.slice(0,10)] = e; });
+      setEntries(map);
+      setLocked(data.locked);
+      setUserInfo(data.user);
+    } catch(e) { console.error(e); }
+    finally { setLoading(false); }
+  }, [mois, apiFetch]);
+
+  const loadHolidays = useCallback(async () => {
+    try {
+      const res = await apiFetch(`${API_URL}/timesheet/holidays?year=${mois.slice(0,4)}`);
+      const data = await res.json();
+      setHolidays(new Set(data));
+    } catch(e) { console.error(e); }
+  }, [mois, apiFetch]);
+
+  const loadAdminSummary = useCallback(async () => {
+    try {
+      const res = await apiFetch(`${API_URL}/timesheet/admin/summary?mois=${adminMois}`);
+      const data = await res.json();
+      setAdminSummary(data);
+    } catch(e) { console.error(e); }
+  }, [adminMois, apiFetch]);
+
+  useEffect(() => { loadHolidays(); }, [loadHolidays]);
+  useEffect(() => {
+    if (viewMode === 'mine') loadEntries(adminTargetUser);
+  }, [mois, viewMode, adminTargetUser, loadEntries]);
+  useEffect(() => {
+    if (viewMode === 'admin' && currentUser?.is_admin) loadAdminSummary();
+  }, [adminMois, viewMode, currentUser, loadAdminSummary]);
+
+  async function saveEntry(date, field, value) {
+    const current = entries[date] || {};
+    const updated = { ...current, [field]: value };
+    setEntries(e => ({ ...e, [date]: updated }));
+
+    const payload = {
+      date,
+      heure_debut: updated.heure_debut || null,
+      heure_fin: updated.heure_fin || null,
+      pause_minutes: updated.pause_minutes || 0,
+      motif: updated.motif || null,
+      precision: updated.precision || null,
+    };
+    if (adminTargetUser) payload.user_id = adminTargetUser;
+
+    try {
+      const res = await apiFetch(`${API_URL}/timesheet/entries`, { method: 'POST', body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Erreur', 'error');
+        loadEntries(adminTargetUser);
+        return;
+      }
+      setEntries(e => ({ ...e, [date]: data }));
+    } catch(e) {
+      showToast('Erreur réseau', 'error');
+    }
+  }
+
+  async function toggleLock() {
+    try {
+      const res = await apiFetch(`${API_URL}/timesheet/lock`, {
+        method: 'POST',
+        body: JSON.stringify({ mois, locked: !locked, user_id: adminTargetUser })
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error, 'error'); return; }
+      setLocked(data.locked);
+      showToast(data.locked ? 'Mois verrouillé' : 'Mois déverrouillé');
+    } catch(e) { showToast('Erreur', 'error'); }
+  }
+
+  async function saveContrat(userId, value) {
+    try {
+      await apiFetch(`${API_URL}/timesheet/users/${userId}/contrat`, {
+        method: 'PUT', body: JSON.stringify({ heures_contrat_mois: value })
+      });
+      showToast('Heures de contrat mises à jour');
+      setEditingContrat(null);
+      loadAdminSummary();
+    } catch(e) { showToast('Erreur', 'error'); }
+  }
+
+  function changeMois(delta) {
+    const [y, m] = mois.split('-').map(Number);
+    const d = new Date(y, m-1+delta, 1);
+    setMois(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+
+  function exportExcel() {
+    const params = new URLSearchParams({ mois });
+    if (adminTargetUser) params.set('user_id', adminTargetUser);
+    window.open(`${API_URL}/timesheet/export?${params}&token=${token}`, '_blank');
+  }
+
+  const days = getDaysInMonth(mois);
+  const totals = Object.values(entries).reduce((acc, e) => ({
+    reg: acc.reg + parseFloat(e.heures_reg||0),
+    sup: acc.sup + parseFloat(e.heures_sup||0),
+  }), { reg: 0, sup: 0 });
+
+  const moisLabel = new Date(mois+'-01').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+  if (currentUser?.is_admin && viewMode === 'admin') {
+    return (
+      <div className="timesheet">
+        <div className="timesheet__header">
+          <h2>Feuille de temps — Vue admin</h2>
+          <div className="timesheet__nav">
+            <button className="btn btn--ghost btn--sm" onClick={() => setViewMode('mine')}>← Ma feuille de temps</button>
+          </div>
+        </div>
+        <div className="timesheet__toolbar">
+          <input type="month" value={adminMois} onChange={e => setAdminMois(e.target.value)} />
+        </div>
+        {!adminSummary ? <div className="loading">Chargement…</div> : (
+          <div className="table-wrapper">
+            <table className="contacts-table">
+              <thead><tr><th>Salarié·e</th><th>Contrat (h/mois)</th><th>Jours saisis</th><th>H. régulières</th><th>H. sup</th><th>Statut</th><th>Motifs</th><th></th></tr></thead>
+              <tbody>
+                {adminSummary.map(u => (
+                  <tr key={u.user_id}>
+                    <td><strong>{u.display_name}</strong> <span className="badge badge--tel">{u.initiales}</span></td>
+                    <td>
+                      {editingContrat === u.user_id ? (
+                        <input type="number" step="0.01" defaultValue={u.heures_contrat_mois} autoFocus
+                          onBlur={e => saveContrat(u.user_id, e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && saveContrat(u.user_id, e.target.value)}
+                          style={{width:'80px'}} />
+                      ) : (
+                        <span onClick={() => setEditingContrat(u.user_id)} style={{cursor:'pointer', borderBottom:'1px dashed var(--muted)'}}>
+                          {u.heures_contrat_mois}h
+                        </span>
+                      )}
+                    </td>
+                    <td>{u.jours_saisis}</td>
+                    <td>{u.total_reg}h</td>
+                    <td>{u.total_sup > 0 ? <strong style={{color:'var(--blue)'}}>{u.total_sup}h</strong> : '—'}</td>
+                    <td>{u.locked ? <span className="badge badge--manq">🔒 Verrouillé</span> : <span className="badge badge--dec">Ouvert</span>}</td>
+                    <td className="td-motif">
+                      {Object.entries(u.motifs).map(([m,c]) => `${MOTIFS_TEMPS.find(x=>x.value===m)?.label||m}: ${c}`).join(', ') || '—'}
+                    </td>
+                    <td>
+                      <button className="btn-icon" title="Voir/modifier" onClick={() => { setAdminTargetUser(u.user_id); setMois(adminMois); setViewMode('mine'); }}>✏️</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="timesheet">
+      <div className="timesheet__header">
+        <h2>🕐 Feuille de temps {adminTargetUser && userInfo ? `— ${userInfo.display_name}` : ''}</h2>
+        <div className="timesheet__nav">
+          {currentUser?.is_admin && (
+            adminTargetUser
+              ? <button className="btn btn--ghost btn--sm" onClick={() => { setAdminTargetUser(null); loadEntries(null); }}>← Ma feuille</button>
+              : <button className="btn btn--ghost btn--sm" onClick={() => setViewMode('admin')}>👥 Vue équipe</button>
+          )}
+        </div>
+      </div>
+
+      <div className="timesheet__toolbar">
+        <button className="btn btn--ghost btn--sm" onClick={() => changeMois(-1)}>← Mois préc.</button>
+        <span className="timesheet__mois">{moisLabel}</span>
+        <button className="btn btn--ghost btn--sm" onClick={() => changeMois(1)}>Mois suiv. →</button>
+        <div style={{flex:1}}></div>
+        {locked && <span className="badge badge--manq" style={{marginRight:8}}>🔒 Mois verrouillé</span>}
+        {(!locked || currentUser?.is_admin) && (
+          <button className={`btn btn--sm ${locked ? 'btn--primary' : 'btn--export'}`} onClick={toggleLock}>
+            {locked ? 'Déverrouiller' : 'Verrouiller le mois'}
+          </button>
+        )}
+        <button className="btn btn--ghost btn--sm" onClick={exportExcel}>⬇ Export Excel</button>
+      </div>
+
+      {userInfo && (
+        <div className="timesheet__summary">
+          <div className="timesheet__stat"><span className="timesheet__stat-val">{Math.round(totals.reg*100)/100}h</span><span className="timesheet__stat-label">Heures régulières</span></div>
+          <div className="timesheet__stat"><span className="timesheet__stat-val">{Math.round(totals.sup*100)/100}h</span><span className="timesheet__stat-label">Heures sup</span></div>
+          <div className="timesheet__stat"><span className="timesheet__stat-val">{userInfo.heures_contrat_mois}h</span><span className="timesheet__stat-label">Contrat mensuel</span></div>
+          <div className="timesheet__stat"><span className="timesheet__stat-val" style={{color: totals.reg - userInfo.heures_contrat_mois >= 0 ? 'var(--mint)' : '#e53e3e'}}>
+            {totals.reg - userInfo.heures_contrat_mois >= 0 ? '+' : ''}{Math.round((totals.reg - userInfo.heures_contrat_mois)*100)/100}h
+          </span><span className="timesheet__stat-label">Écart au contrat</span></div>
+        </div>
+      )}
+
+      {loading ? <div className="loading">Chargement…</div> : (
+        <div className="table-wrapper">
+          <table className="contacts-table timesheet-table">
+            <thead><tr><th>Jour</th><th>Date</th><th>Début</th><th>Fin</th><th>Pause (min)</th><th>Motif</th><th>Précision</th><th>Total</th></tr></thead>
+            <tbody>
+              {days.map(day => {
+                const e = entries[day.date] || {};
+                const isHoliday = holidays.has(day.date);
+                const disabled = locked && !currentUser?.is_admin;
+                return (
+                  <tr key={day.date} className={day.isWeekend ? 'tr--weekend' : isHoliday ? 'tr--holiday' : ''}>
+                    <td style={{textTransform:'capitalize'}}>{day.dayName}</td>
+                    <td>{day.dayNum}</td>
+                    <td><input type="time" value={e.heure_debut?.slice(0,5) || ''} disabled={disabled}
+                      onChange={ev => saveEntry(day.date, 'heure_debut', ev.target.value)} /></td>
+                    <td><input type="time" value={e.heure_fin?.slice(0,5) || ''} disabled={disabled}
+                      onChange={ev => saveEntry(day.date, 'heure_fin', ev.target.value)} /></td>
+                    <td><input type="number" min="0" step="5" value={e.pause_minutes || ''} disabled={disabled} style={{width:'60px'}}
+                      onChange={ev => saveEntry(day.date, 'pause_minutes', parseInt(ev.target.value)||0)} /></td>
+                    <td>
+                      <select value={e.motif || ''} disabled={disabled} onChange={ev => saveEntry(day.date, 'motif', ev.target.value)}>
+                        <option value="">—</option>
+                        {MOTIFS_TEMPS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                      </select>
+                    </td>
+                    <td><input type="text" value={e.precision || ''} disabled={disabled} placeholder="ex: Caen, Live Pro…"
+                      onChange={ev => saveEntry(day.date, 'precision', ev.target.value)} /></td>
+                    <td><strong>{e.heures_total ? `${e.heures_total}h` : isHoliday ? 'Férié' : day.isWeekend ? '' : '—'}</strong></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 export default function App() {
   const [token, setToken] = useState(() => sessionStorage.getItem('mda_token') || '');
   const [currentUser, setCurrentUser] = useState(() => { try { return JSON.parse(sessionStorage.getItem('mda_user') || 'null'); } catch { return null; } });
@@ -796,6 +1087,7 @@ export default function App() {
           <button className={`nav-btn ${view === 'list' ? 'nav-btn--on' : ''}`} onClick={() => { setEditing(null); setView('list'); }}>Liste</button>
           <button className={`nav-btn ${view === 'new' ? 'nav-btn--on' : ''}`} onClick={() => { setEditing(null); setView('new'); }}>+ Nouveau</button>
           <button className={`nav-btn ${view === 'stats' ? 'nav-btn--on' : ''}`} onClick={() => setView('stats')}>Statistiques</button>
+          <button className={`nav-btn ${view === 'timesheet' ? 'nav-btn--on' : ''}`} onClick={() => setView('timesheet')}>🕐 Temps</button>
           {currentUser?.is_admin && (
             <button className={`nav-btn ${view === 'admin' ? 'nav-btn--on' : ''}`} onClick={() => setView('admin')}>⚙ Comptes</button>
           )}
@@ -928,6 +1220,7 @@ export default function App() {
           </section>
         )}
         {view === 'stats' && !editing && <section><Dashboard stats={stats} /></section>}
+        {view === 'timesheet' && !editing && <section><TimesheetView token={token} currentUser={currentUser} showToast={showToast} /></section>}
         {view === 'admin' && currentUser?.is_admin && <section><AdminPanel token={token} showToast={showToast} /></section>}
       </main>
       <Footer />
