@@ -439,7 +439,7 @@ function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifA
   );
 }
 
-function ContactTable({ contacts, onEdit, onDelete, customMotifs, onFiche, toggleSort, sort }) {
+function ContactTable({ contacts, onEdit, onDelete, customMotifs, onFiche, toggleSort, sort, checkinIds, onPrisEnCharge }) {
   function SortTh({ col, children }) {
     const active = sort.col === col;
     return (
@@ -462,11 +462,14 @@ function ContactTable({ contacts, onEdit, onDelete, customMotifs, onFiche, toggl
           <SortTh col="qui">Qui</SortTh>
           <th>Remarques</th>
           <th>Suivi</th>
+          <th>Statut</th>
           <th></th>
         </tr></thead>
         <tbody>
-          {contacts.map(row => (
-            <tr key={row.id} className={row.a_rappeler ? 'tr--rappel' : ''}>
+          {contacts.map(row => {
+            const enAttente = checkinIds && checkinIds.has(row.id);
+            return (
+            <tr key={row.id} className={`${row.a_rappeler ? 'tr--rappel' : ''} ${enAttente ? 'tr--checkin' : ''}`}>
               <td className="td-date">{formatDate(row.date)}</td>
               <td><span className={`badge badge--${row.type.toLowerCase()}`}>{row.type}</span></td>
               <td className="td-artiste">
@@ -481,12 +484,17 @@ function ContactTable({ contacts, onEdit, onDelete, customMotifs, onFiche, toggl
               <td>{getQui(row)}</td>
               <td className="td-remarques" title={row.remarques}>{row.remarques || '—'}</td>
               <td className="td-suivi" title={row.suivi}>{row.suivi ? <span className="suivi-badge">🔔 {row.suivi}</span> : '—'}</td>
+              <td className="td-statut">
+                {enAttente
+                  ? <button className="checkin-badge" onClick={() => onPrisEnCharge(row.id)} title="Marquer comme pris en charge">⏳ En attente — Pris en charge ✓</button>
+                  : '—'}
+              </td>
               <td className="td-actions">
                 <button className="btn-icon" onClick={() => onEdit(row)} title="Modifier">✏️</button>
                 <button className="btn-icon btn-icon--del" onClick={() => onDelete(row.id)} title="Supprimer">🗑️</button>
               </td>
             </tr>
-          ))}
+          );})}
         </tbody>
       </table>
     </div>
@@ -1240,33 +1248,9 @@ export default function App() {
                 </div>
               </div>
             )}
-            {checkinEnAttente.length > 0 && (
-              <div className="checkin-list">
-                <div className="checkin-list__header">
-                  <span className="checkin-list__icon">🔔</span>
-                  <span className="checkin-list__title">
-                    {checkinEnAttente.length === 1 ? '1 personne en attente de rendez-vous' : `${checkinEnAttente.length} personnes en attente de rendez-vous`}
-                  </span>
-                </div>
-                {checkinEnAttente.map(c => {
-                  const nom = [c.prenom, c.nom].filter(Boolean).join(' ') || 'Artiste sans nom';
-                  const motifs = getMotifs(c, customMotifs);
-                  return (
-                    <div key={c.id} className="checkin-item">
-                      <div className="checkin-item__info">
-                        <strong>{nom}</strong>
-                        {motifs !== '—' && <span className="checkin-item__motifs"> — {motifs}</span>}
-                      </div>
-                      <button className="checkin-item__btn" onClick={() => setCheckinEnAttente(prev => prev.filter(x => x.id !== c.id))}>
-                        Pris en charge ✓
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
             {loading ? <div className="loading">Chargement…</div> : <>
-              <ContactTable contacts={pagedContacts} customMotifs={customMotifs} onEdit={row => setEditing(row)} onDelete={handleDelete} onFiche={setFicheArtiste} toggleSort={toggleSort} sort={sort} />
+              <ContactTable contacts={pagedContacts} customMotifs={customMotifs} onEdit={row => setEditing(row)} onDelete={handleDelete} onFiche={setFicheArtiste} toggleSort={toggleSort} sort={sort}
+                checkinIds={new Set(checkinEnAttente.map(c => c.id))} onPrisEnCharge={id => setCheckinEnAttente(prev => prev.filter(x => x.id !== id))} />
               {totalPages > 1 && (
                 <div className="pagination">
                   <button className="btn btn--ghost btn--sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Précédent</button>
