@@ -941,7 +941,6 @@ export default function App() {
   const [ficheArtiste, setFicheArtiste] = useState(null);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('mda_dark') === '1');
   const [lastRefresh, setLastRefresh] = useState(null);
-  const [checkinEnAttente, setCheckinEnAttente] = useState([]);
   const PAGE_SIZE = 50;
 
   // Rappel CSV Orange Business
@@ -987,27 +986,6 @@ export default function App() {
     [token]
   );
 
-  const prevContactsRef = React.useRef(null);
-  const prevCheckinRef = React.useRef(null);
-
-  const checkNewCheckins = useCallback(async () => {
-    try {
-      const res = await apiFetch(`${API_URL}/contacts?from=${new Date().toISOString().slice(0,10)}`);
-      if (!res.ok) return;
-      const todayContacts = await res.json();
-      if (prevCheckinRef.current !== null) {
-        const prevIds = new Set(prevCheckinRef.current.map(c => c.id));
-        const added = todayContacts.filter(c =>
-          !prevIds.has(c.id) && (c.remarques || '').includes('[Enregistrement tablette accueil]')
-        );
-        if (added.length > 0) {
-          setCheckinEnAttente(prev => [...prev, ...added]);
-        }
-      }
-      prevCheckinRef.current = todayContacts;
-    } catch(e) { console.error(e); }
-  }, [apiFetch]);
-
   const loadContacts = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
@@ -1052,13 +1030,6 @@ export default function App() {
     const interval = setInterval(() => loadContacts(), 20000);
     return () => clearInterval(interval);
   }, [token, view, loadContacts]);
-
-  useEffect(() => {
-    if (!token) return;
-    checkNewCheckins(); // premier check immédiat
-    const interval = setInterval(() => checkNewCheckins(), 20000);
-    return () => clearInterval(interval);
-  }, [token, checkNewCheckins]);
 
   useEffect(() => {
     document.body.classList.toggle('dark', darkMode);
@@ -1116,6 +1087,16 @@ export default function App() {
     await apiFetch(`${API_URL}/contacts/${id}`, { method: 'DELETE' });
     setContacts(cs => cs.filter(c => c.id !== id));
     showToast('Contact supprimé', 'error');
+  }
+
+  async function handlePrisEnCharge(id) {
+    try {
+      const res = await apiFetch(`${API_URL}/contacts/${id}/pris-en-charge`, { method: 'PUT' });
+      if (!res.ok) { showToast('Erreur', 'error'); return; }
+      const updated = await res.json();
+      setContacts(cs => cs.map(c => c.id === id ? updated : c));
+      showToast('Marqué comme pris en charge');
+    } catch(e) { showToast('Erreur réseau', 'error'); }
   }
 
   function handleMotifAdded(m) { setCustomMotifs(ms => [...ms, m]); }
@@ -1219,7 +1200,7 @@ export default function App() {
                 <div className="day-counter__label">Rendez-vous aujourd'hui</div>
               </div>
               <div className="day-counter day-counter--attente">
-                <div className="day-counter__val">{checkinEnAttente.length}</div>
+                <div className="day-counter__val">{contacts.filter(c => !c.pris_en_charge && (c.remarques || '').includes('[Enregistrement tablette accueil]')).length}</div>
                 <div className="day-counter__label">En attente</div>
               </div>
             </div>
@@ -1250,7 +1231,8 @@ export default function App() {
             )}
             {loading ? <div className="loading">Chargement…</div> : <>
               <ContactTable contacts={pagedContacts} customMotifs={customMotifs} onEdit={row => setEditing(row)} onDelete={handleDelete} onFiche={setFicheArtiste} toggleSort={toggleSort} sort={sort}
-                checkinIds={new Set(checkinEnAttente.map(c => c.id))} onPrisEnCharge={id => setCheckinEnAttente(prev => prev.filter(x => x.id !== id))} />
+                checkinIds={new Set(contacts.filter(c => !c.pris_en_charge && (c.remarques || '').includes('[Enregistrement tablette accueil]')).map(c => c.id))}
+                onPrisEnCharge={handlePrisEnCharge} />
               {totalPages > 1 && (
                 <div className="pagination">
                   <button className="btn btn--ghost btn--sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Précédent</button>
