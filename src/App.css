@@ -604,3 +604,45 @@ body.dark .toggle { background: #252836; border-color: #2a2d3e; color: #8888a8; 
 .rappel-csv-banner__btn--link:hover { filter: brightness(.9); }
 .rappel-csv-banner--urgent .rappel-csv-banner__btn { background: #e53e3e; }
 .rappel-csv-banner--urgent .rappel-csv-banner__btn:hover { background: #c53030; }
+
+/* Feuille de temps */
+.timesheet { display: flex; flex-direction: column; gap: 16px; }
+.timesheet__header { display: flex; align-items: center; justify-content: space-between; }
+.timesheet__header h2 { font-size: 20px; font-weight: 800; color: var(--charbon); }
+.timesheet__toolbar {
+  display: flex; align-items: center; gap: 12px;
+  background: white; border-radius: var(--radius); padding: 12px 16px;
+  box-shadow: var(--shadow);
+}
+.timesheet__mois {
+  font-size: 16px; font-weight: 800; text-transform: capitalize;
+  color: var(--charbon); min-width: 160px; text-align: center;
+}
+.timesheet__summary {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+}
+.timesheet__stat {
+  background: white; border-radius: var(--radius); padding: 16px 20px;
+  box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px;
+  border-left: 4px solid var(--blue);
+}
+.timesheet__stat-val { font-size: 28px; font-weight: 800; color: var(--charbon); }
+.timesheet__stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+
+.timesheet-table th, .timesheet-table td { font-size: 13px; }
+.timesheet-table input, .timesheet-table select {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 5px 8px; font-size: 13px; font-family: inherit;
+  width: 100%; background: white;
+}
+.timesheet-table input:disabled, .timesheet-table select:disabled {
+  background: var(--off); color: var(--muted); cursor: not-allowed;
+}
+.timesheet-table input[type=time] { min-width: 90px; }
+.timesheet-table input[type=text] { min-width: 120px; }
+.tr--weekend td { background: #f5f5fa; color: var(--muted); }
+.tr--holiday td { background: rgba(255,234,0,.08); }
+
+body.dark .timesheet__toolbar, body.dark .timesheet__stat { background: #1c1f2c; }
+body.dark .timesheet-table input, body.dark .timesheet-table select { background: #252836; border-color: #2a2d3e; color: #e8e8f0; }
+body.dark .tr--weekend td { background: #1a1c28; }
