@@ -610,6 +610,7 @@ function TimesheetView({ token, currentUser, showToast }) {
   const [viewMode, setViewMode] = useState('mine'); // 'mine' | 'admin'
   const [adminTargetUser, setAdminTargetUser] = useState(null);
   const [editingContrat, setEditingContrat] = useState(null);
+  const [clipboard, setClipboard] = useState(null);
 
   const apiFetch = useCallback((url, options = {}) =>
     fetch(url, { ...options, headers: { 'Content-Type': 'application/json', 'Authorization': token, ...(options.headers||{}) } }),
@@ -656,9 +657,9 @@ function TimesheetView({ token, currentUser, showToast }) {
     if (viewMode === 'admin' && currentUser?.is_admin) loadAdminSummary();
   }, [adminMois, viewMode, currentUser, loadAdminSummary]);
 
-  async function saveEntry(date, field, value) {
+  async function saveEntry(date, field, value, bulkFields = null) {
     const current = entries[date] || {};
-    const updated = { ...current, [field]: value };
+    const updated = field === '_bulk' ? { ...current, ...bulkFields } : { ...current, [field]: value };
     setEntries(e => ({ ...e, [date]: updated }));
 
     const payload = {
@@ -719,6 +720,47 @@ function TimesheetView({ token, currentUser, showToast }) {
     const params = new URLSearchParams({ mois });
     if (adminTargetUser) params.set('user_id', adminTargetUser);
     window.open(`${API_URL}/timesheet/export?${params}&token=${token}`, '_blank');
+  }
+
+  const HORAIRE_DEFAUT = { heure_debut: '09:30', heure_fin: '17:30', pause_minutes: 60 };
+
+  async function prefillMonth() {
+    const days = getDaysInMonth(mois);
+    const toFill = days.filter(d => !d.isWeekend && !holidays.has(d.date) && !entries[d.date]?.heure_debut);
+    if (toFill.length === 0) { showToast('Aucun jour vide à préremplir', 'error'); return; }
+    if (!window.confirm(`Préremplir ${toFill.length} jour(s) avec l'horaire 9h30-17h30 (pause 1h) ?`)) return;
+    for (const d of toFill) {
+      await saveEntry(d.date, '_bulk', null, HORAIRE_DEFAUT);
+    }
+    showToast(`${toFill.length} jour(s) préremplis`);
+  }
+
+  function copyDay(date) {
+    const e = entries[date];
+    if (!e || !e.heure_debut) { showToast('Aucun horaire à copier ce jour-là', 'error'); return; }
+    setClipboard({
+      heure_debut: e.heure_debut?.slice(0,5),
+      heure_fin: e.heure_fin?.slice(0,5),
+      pause_minutes: e.pause_minutes || 0
+    });
+    showToast('Horaire copié — collez-le sur d\'autres jours');
+  }
+
+  async function pasteDay(date) {
+    if (!clipboard) return;
+    await saveEntry(date, '_bulk', null, clipboard);
+  }
+
+  async function pasteRestOfMonth(fromDate) {
+    if (!clipboard) return;
+    const days = getDaysInMonth(mois);
+    const target = days.filter(d => d.date > fromDate && !d.isWeekend && !holidays.has(d.date));
+    if (target.length === 0) return;
+    if (!window.confirm(`Coller cet horaire sur les ${target.length} jours ouvrés restants du mois ?`)) return;
+    for (const d of target) {
+      await saveEntry(d.date, '_bulk', null, clipboard);
+    }
+    showToast(`Horaire collé sur ${target.length} jour(s)`);
   }
 
   const days = getDaysInMonth(mois);
@@ -799,6 +841,9 @@ function TimesheetView({ token, currentUser, showToast }) {
         <span className="timesheet__mois">{moisLabel}</span>
         <button className="btn btn--ghost btn--sm" onClick={() => changeMois(1)}>Mois suiv. →</button>
         <div style={{flex:1}}></div>
+        {(!locked || currentUser?.is_admin) && (
+          <button className="btn btn--ghost btn--sm" onClick={prefillMonth}>📋 Préremplir 9h30-17h30</button>
+        )}
         {locked && <span className="badge badge--manq" style={{marginRight:8}}>🔒 Mois verrouillé</span>}
         {(!locked || currentUser?.is_admin) && (
           <button className={`btn btn--sm ${locked ? 'btn--primary' : 'btn--export'}`} onClick={toggleLock}>
@@ -822,7 +867,7 @@ function TimesheetView({ token, currentUser, showToast }) {
       {loading ? <div className="loading">Chargement…</div> : (
         <div className="table-wrapper">
           <table className="contacts-table timesheet-table">
-            <thead><tr><th>Jour</th><th>Date</th><th>Début</th><th>Fin</th><th>Pause (min)</th><th>Motif</th><th>Précision</th><th>Total</th></tr></thead>
+            <thead><tr><th>Jour</th><th>Date</th><th>Début</th><th>Fin</th><th>Pause (min)</th><th>Motif</th><th>Précision</th><th>Total</th><th></th></tr></thead>
             <tbody>
               {days.map(day => {
                 const e = entries[day.date] || {};
@@ -847,6 +892,19 @@ function TimesheetView({ token, currentUser, showToast }) {
                     <td><input type="text" value={e.precision || ''} disabled={disabled} placeholder="ex: Caen, Live Pro…"
                       onChange={ev => saveEntry(day.date, 'precision', ev.target.value)} /></td>
                     <td><strong>{e.heures_total ? `${e.heures_total}h` : isHoliday ? 'Férié' : day.isWeekend ? '' : '—'}</strong></td>
+                    <td className="td-actions">
+                      {!disabled && !day.isWeekend && !isHoliday && (
+                        <>
+                          <button className="btn-icon" title="Copier cet horaire" onClick={() => copyDay(day.date)}>📋</button>
+                          {clipboard && (
+                            <>
+                              <button className="btn-icon" title="Coller ici" onClick={() => pasteDay(day.date)}>📥</button>
+                              <button className="btn-icon" title="Coller sur le reste du mois" onClick={() => pasteRestOfMonth(day.date)}>📥➡</button>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
