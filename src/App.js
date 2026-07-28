@@ -1025,10 +1025,41 @@ export default function App() {
   useEffect(() => { if (token) loadContacts(); }, [filters]);
   useEffect(() => { setPage(1); }, [search, filters]);
 
+  // Rafraîchit la liste des contacts périodiquement, mais uniquement quand
+  // l'onglet est visible et actif. Ancien comportement : refetch complet
+  // toutes les 20s en permanence, même onglet en arrière-plan -> gros excès
+  // de transfert de données (5+ Go/mois pour une base de 30 Mo). Nouveau
+  // comportement : intervalle allongé à 90s, suspendu quand l'onglet n'est
+  // pas visible, et refresh immédiat au retour sur l'onglet.
   useEffect(() => {
     if (!token || view !== 'list') return;
-    const interval = setInterval(() => loadContacts(), 20000);
-    return () => clearInterval(interval);
+
+    let interval = null;
+
+    const startPolling = () => {
+      if (interval) return;
+      interval = setInterval(() => loadContacts(), 90000);
+    };
+    const stopPolling = () => {
+      if (interval) { clearInterval(interval); interval = null; }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadContacts(); // rattrape ce qui a pu changer pendant l'absence
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    if (document.visibilityState === 'visible') startPolling();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [token, view, loadContacts]);
 
   useEffect(() => {
