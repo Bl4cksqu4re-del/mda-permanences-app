@@ -448,7 +448,28 @@
           <div class="stat-card__label">Appelants uniques</div>
         </div>
         <div style="font-size:12px;color:var(--muted);border-left:1px solid var(--border);padding-left:24px">
-          Source : CallDetails.csv — seule donnée fiable tirée de ce fichier (les appels sortants/rappels de l'équipe n'y figurent pas, voir avec Orange Business).
+          Source : CallDetails.csv — seule donnée fiable à en tirer côté volume global (le reste dépend de la reconstruction, voir group/agent_statistics ci-dessus).
+        </div>
+      </div>` : ''}
+
+      ${d.rappelsSortants && d.rappelsSortants.length > 0 ? `
+      <div class="section section--full">
+        <h3>Rappels sortants (par personne)</h3>
+        <table>
+          <thead><tr><th>Nom</th><th>Rappels</th><th>Numéros uniques rappelés</th><th>Durée totale</th></tr></thead>
+          <tbody>
+            ${d.rappelsSortants.map(r => `
+              <tr>
+                <td>${r.nom}</td>
+                <td><strong>${r.sortants}</strong></td>
+                <td>${r.numerosUniques}</td>
+                <td>${fmt(r.dureeTotale)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div style="font-size:12px;color:var(--muted);margin-top:10px">
+          Source : CallDetails.csv scopé par poste individuel (n'existe que si un tel export a été importé pour cette personne sur la période — sinon elle n'apparaît pas dans ce tableau).
         </div>
       </div>` : ''}
 
