@@ -907,9 +907,23 @@ function TimesheetView({ token, currentUser, showToast }) {
           <div className="timesheet__stat"><span className="timesheet__stat-val">{Math.round(totals.sup*100)/100}h</span><span className="timesheet__stat-label">Heures sup</span></div>
           <div className="timesheet__stat"><span className="timesheet__stat-val">{userInfo.heures_contrat_mois}h</span><span className="timesheet__stat-label">Contrat mensuel</span></div>
           <div className="timesheet__stat"><span className="timesheet__stat-val">{Math.round(((userInfo.heures_semaine_base||35)/(userInfo.jours_semaine_base||5))*100)/100}h/j</span><span className="timesheet__stat-label">Seuil journalier ({userInfo.heures_semaine_base||35}h/sem)</span></div>
-          <div className="timesheet__stat"><span className="timesheet__stat-val" style={{color: totals.reg - userInfo.heures_contrat_mois >= 0 ? 'var(--mint)' : '#e53e3e'}}>
-            {totals.reg - userInfo.heures_contrat_mois >= 0 ? '+' : ''}{Math.round((totals.reg - userInfo.heures_contrat_mois)*100)/100}h
-          </span><span className="timesheet__stat-label">Écart au contrat</span></div>
+    <span
+  className="timesheet__stat-val"
+  style={{
+    color:
+      (totals.reg + totals.sup) - userInfo.heures_contrat_mois >= 0
+        ? 'var(--mint)'
+        : '#e53e3e'
+  }}
+>
+  {(totals.reg + totals.sup) - userInfo.heures_contrat_mois >= 0 ? '+' : ''}
+  {Math.round(
+    (
+      (totals.reg + totals.sup) -
+      userInfo.heures_contrat_mois
+    ) * 100
+  ) / 100}h
+</span></div>
         </div>
       )}
 
