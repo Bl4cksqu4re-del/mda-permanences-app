@@ -1309,10 +1309,15 @@ export default function App() {
   });
 }, [contacts, search, filters, sort]);
 
-  function toggleSort(col) {
-    setSort(s => s.col === col ? { col, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' });
-    setPage(1);
-  }
+  const toggleSort = useCallback((col) => {
+  setSort(s =>
+    s.col === col
+      ? { col, dir: s.dir === 'asc' ? 'desc' : 'asc' }
+      : { col, dir: 'asc' }
+  );
+
+  setPage(1);
+}, []);
 
   const totalPages = Math.max(1, Math.ceil(filteredContacts.length / PAGE_SIZE));
   const pagedContacts = filteredContacts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
