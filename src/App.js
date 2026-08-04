@@ -10,7 +10,7 @@ const getDefaultType = () => {
 const EMPTY_FORM = {
   date: new Date().toISOString().slice(0, 10),
   type: getDefaultType(),
-  prenom: '', nom: '',
+  prenom: '', nom: '', numero_adherent: '',
   id_adherent: false, id_non_adherent: false,
   id_ancien_adherent: false, id_structure: false, id_autres: false,
   motif_declaration: false, motif_adjonction: false, motif_juridique: false,
@@ -373,6 +373,10 @@ function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifA
       <fieldset>
         <legend>Identification</legend>
         <div className="pills-row">{ID_FIELDS.map(f => <CheckPill key={f.key} label={f.label} checked={!!form[f.key]} onChange={v => set(f.key, v)} />)}</div>
+        <div className="field" style={{marginTop: '10px', maxWidth: '220px'}}>
+          <label>N° adhérent</label>
+          <input type="text" value={form.numero_adherent} onChange={e => set('numero_adherent', e.target.value)} placeholder="ex: 12345" />
+        </div>
       </fieldset>
       <fieldset>
         <legend>Motifs standards</legend>
@@ -477,6 +481,7 @@ function ContactTable({ contacts, onEdit, onDelete, customMotifs, onFiche, toggl
                   ? <button className="artiste-link" onClick={() => onFiche(`${row.prenom||''} ${row.nom||''}`.trim())}>{[row.prenom, row.nom].filter(Boolean).join(' ')}</button>
                   : '—'}
                 {row.a_rappeler && <span className="rappel-dot" title="À rappeler">🔔</span>}
+                {row.numero_adherent && <div className="td-artiste__num" style={{fontSize:'.78em', color:'var(--muted)'}}>N° {row.numero_adherent}</div>}
               </td>
               <td className="td-profil">{getIdLabel(row)}</td>
               <td className="td-motif">{getMotifs(row, customMotifs)}</td>
@@ -509,7 +514,10 @@ function FicheArtiste({ nom, contacts, customMotifs, onClose, onEdit }) {
           <h2>Historique — {nom}</h2>
           <button className="btn-icon" onClick={onClose}>✕</button>
         </div>
-        <p className="modal-sub">{contacts.length} passage{contacts.length > 1 ? 's' : ''} en permanence</p>
+        <p className="modal-sub">
+          {contacts.length} passage{contacts.length > 1 ? 's' : ''} en permanence
+          {(() => { const withNum = contacts.find(c => c.numero_adherent); return withNum ? ` — N° adhérent ${withNum.numero_adherent}` : ''; })()}
+        </p>
         {contacts.length === 0
           ? <p className="empty-state">Aucun passage trouvé.</p>
           : <div className="fiche-list">
@@ -604,6 +612,38 @@ function getDaysInMonth(mois) {
     });
   }
   return days;
+}
+
+function BaseHoraireEditor({ user, onSave, onCancel }) {
+  const [heuresSemaine, setHeuresSemaine] = useState(user.heures_semaine_base);
+  const [joursSemaine, setJoursSemaine] = useState(user.jours_semaine_base);
+  const [contratMois, setContratMois] = useState(user.heures_contrat_mois);
+
+  function suggererContrat() {
+    // Mensualisation classique : heures/semaine × 52 / 12
+    const val = Math.round((parseFloat(heuresSemaine) || 0) * 52 / 12 * 100) / 100;
+    setContratMois(val);
+  }
+
+  return (
+    <div style={{display:'flex', flexWrap:'wrap', alignItems:'center', gap:'6px'}}>
+      <input type="number" step="0.5" min="0" value={heuresSemaine} autoFocus
+        onChange={e => setHeuresSemaine(e.target.value)} style={{width:'56px'}} title="Heures / semaine" />
+      <span style={{fontSize:'.85em', color:'var(--muted)'}}>h/sem sur</span>
+      <input type="number" step="0.5" min="0" max="7" value={joursSemaine}
+        onChange={e => setJoursSemaine(e.target.value)} style={{width:'44px'}} title="Jours / semaine" />
+      <span style={{fontSize:'.85em', color:'var(--muted)'}}>j</span>
+      <button type="button" className="btn-icon" title="Suggérer le contrat mensuel (mensualisation)" onClick={suggererContrat}>≈</button>
+      <input type="number" step="0.01" min="0" value={contratMois}
+        onChange={e => setContratMois(e.target.value)} style={{width:'70px'}} title="Contrat mensuel (h)" />
+      <span style={{fontSize:'.85em', color:'var(--muted)'}}>h/mois</span>
+      <button type="button" className="btn btn--sm btn--primary"
+        onClick={() => onSave({ heures_semaine_base: heuresSemaine, jours_semaine_base: joursSemaine, heures_contrat_mois: contratMois })}>
+        ✓
+      </button>
+      <button type="button" className="btn btn--sm btn--ghost" onClick={onCancel}>✕</button>
+    </div>
+  );
 }
 
 function TimesheetView({ token, currentUser, showToast }) {
@@ -707,12 +747,13 @@ function TimesheetView({ token, currentUser, showToast }) {
     } catch(e) { showToast('Erreur', 'error'); }
   }
 
-  async function saveContrat(userId, value) {
+  async function saveContrat(userId, fields) {
     try {
-      await apiFetch(`${API_URL}/timesheet/users/${userId}/contrat`, {
-        method: 'PUT', body: JSON.stringify({ heures_contrat_mois: value })
+      const res = await apiFetch(`${API_URL}/timesheet/users/${userId}/contrat`, {
+        method: 'PUT', body: JSON.stringify(fields)
       });
-      showToast('Heures de contrat mises à jour');
+      if (!res.ok) { const d = await res.json(); showToast(d.error || 'Erreur', 'error'); return; }
+      showToast('Horaire de base mis à jour');
       setEditingContrat(null);
       loadAdminSummary();
     } catch(e) { showToast('Erreur', 'error'); }
@@ -794,23 +835,22 @@ function TimesheetView({ token, currentUser, showToast }) {
         {!adminSummary ? <div className="loading">Chargement…</div> : (
           <div className="table-wrapper">
             <table className="contacts-table">
-              <thead><tr><th>Salarié·e</th><th>Contrat (h/mois)</th><th>Jours saisis</th><th>H. régulières</th><th>H. sup</th><th>Statut</th><th>Motifs</th><th></th></tr></thead>
+              <thead><tr><th>Salarié·e</th><th>Horaire de base</th><th>Contrat (h/mois)</th><th>Jours saisis</th><th>H. régulières</th><th>H. sup</th><th>Statut</th><th>Motifs</th><th></th></tr></thead>
               <tbody>
                 {adminSummary.map(u => (
                   <tr key={u.user_id}>
                     <td><strong>{u.display_name}</strong> <span className="badge badge--tel">{u.initiales}</span></td>
-                    <td>
+                    <td colSpan={editingContrat === u.user_id ? 2 : 1}>
                       {editingContrat === u.user_id ? (
-                        <input type="number" step="0.01" defaultValue={u.heures_contrat_mois} autoFocus
-                          onBlur={e => saveContrat(u.user_id, e.target.value)}
-                          onKeyDown={e => e.key === 'Enter' && saveContrat(u.user_id, e.target.value)}
-                          style={{width:'80px'}} />
+                        <BaseHoraireEditor user={u} onSave={fields => saveContrat(u.user_id, fields)} onCancel={() => setEditingContrat(null)} />
                       ) : (
-                        <span onClick={() => setEditingContrat(u.user_id)} style={{cursor:'pointer', borderBottom:'1px dashed var(--muted)'}}>
-                          {u.heures_contrat_mois}h
+                        <span onClick={() => setEditingContrat(u.user_id)} style={{cursor:'pointer', borderBottom:'1px dashed var(--muted)'}}
+                          title="Cliquer pour modifier l'horaire de base et le contrat mensuel">
+                          {u.heures_semaine_base}h/sem · {u.jours_semaine_base}j
                         </span>
                       )}
                     </td>
+                    {editingContrat !== u.user_id && <td>{u.heures_contrat_mois}h</td>}
                     <td>{u.jours_saisis}</td>
                     <td>{u.total_reg}h</td>
                     <td>{u.total_sup > 0 ? <strong style={{color:'var(--blue)'}}>{u.total_sup}h</strong> : '—'}</td>
@@ -866,6 +906,7 @@ function TimesheetView({ token, currentUser, showToast }) {
           <div className="timesheet__stat"><span className="timesheet__stat-val">{Math.round(totals.reg*100)/100}h</span><span className="timesheet__stat-label">Heures régulières</span></div>
           <div className="timesheet__stat"><span className="timesheet__stat-val">{Math.round(totals.sup*100)/100}h</span><span className="timesheet__stat-label">Heures sup</span></div>
           <div className="timesheet__stat"><span className="timesheet__stat-val">{userInfo.heures_contrat_mois}h</span><span className="timesheet__stat-label">Contrat mensuel</span></div>
+          <div className="timesheet__stat"><span className="timesheet__stat-val">{Math.round(((userInfo.heures_semaine_base||35)/(userInfo.jours_semaine_base||5))*100)/100}h/j</span><span className="timesheet__stat-label">Seuil journalier ({userInfo.heures_semaine_base||35}h/sem)</span></div>
           <div className="timesheet__stat"><span className="timesheet__stat-val" style={{color: totals.reg - userInfo.heures_contrat_mois >= 0 ? 'var(--mint)' : '#e53e3e'}}>
             {totals.reg - userInfo.heures_contrat_mois >= 0 ? '+' : ''}{Math.round((totals.reg - userInfo.heures_contrat_mois)*100)/100}h
           </span><span className="timesheet__stat-label">Écart au contrat</span></div>
