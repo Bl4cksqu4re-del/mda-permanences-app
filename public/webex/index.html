@@ -441,6 +441,22 @@
         </div>
       </div>
 
+      ${(() => {
+        const cv = d.couverture;
+        if (!cv || cv.joursDemandes === 0) return '';
+        const ecart = cv.joursGroupStats - cv.joursCallDetails;
+        if (Math.abs(ecart) < cv.joursDemandes * 0.1) return '';
+        return `
+        <div class="section section--full" style="background:#fff8e6;border-left:4px solid #f0ad00">
+          <div style="font-size:13px;color:#7a5600">
+            ⚠️ Sur les <strong>${cv.joursDemandes} jours</strong> sélectionnés, <strong>group_statistics</strong> couvre ${cv.joursGroupStats} jour(s)
+            mais <strong>CallDetails.csv</strong> n'en couvre que ${cv.joursCallDetails} — les chiffres "appelants uniques" et "rappels sortants"
+            ci-dessous ne portent donc que sur une partie de la période, pas la même que les stats officielles au-dessus.
+            Ce n'est pas une erreur de calcul, juste des imports partiels.
+          </div>
+        </div>`;
+      })()}
+
       ${d.appelantsUniques != null ? `
       <div class="section section--full" style="display:flex;align-items:center;gap:24px;padding:16px 24px">
         <div>
