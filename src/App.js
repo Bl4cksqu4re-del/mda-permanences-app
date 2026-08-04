@@ -1363,22 +1363,30 @@ export default function App() {
     showToast('Contact supprimé', 'error');
   }
 
-  async function handlePrisEnCharge(id) {
-    try {
-      const res = await apiFetch(`${API_URL}/contacts/${id}/pris-en-charge`, { method: 'PUT' });
-      if (!res.ok) { showToast('Erreur', 'error'); return; }
-      const updated = await res.json();
-      setContacts(cs => cs.map(c => c.id === id ? updated : c));
-      showToast('Marqué comme pris en charge');
-    } catch(e) { showToast('Erreur réseau', 'error'); }
-  }
+  const handlePrisEnCharge = useCallback(async (id) => {
+  try {
+    const res = await apiFetch(
+      `${API_URL}/contacts/${id}/pris-en-charge`,
+      { method: 'PUT' }
+    );
 
-  function handleMotifAdded(m) { setCustomMotifs(ms => [...ms, m]); }
-  async function handleMotifDeleted(id) {
-    if (!window.confirm('Supprimer ce motif personnalisé ?')) return;
-    await apiFetch(`${API_URL}/motifs-custom/${id}`, { method: 'DELETE' });
-    setCustomMotifs(ms => ms.filter(m => m.id !== id));
+    if (!res.ok) {
+      showToast('Erreur', 'error');
+      return;
+    }
+
+    const updated = await res.json();
+
+    setContacts(cs =>
+      cs.map(c => (c.id === id ? updated : c))
+    );
+
+    showToast('Marqué comme pris en charge');
+  } catch (e) {
+    showToast('Erreur réseau', 'error');
   }
+}, [apiFetch]);
+``
 
   function handleExport() {
     const params = new URLSearchParams();
