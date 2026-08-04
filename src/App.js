@@ -203,12 +203,17 @@ function AdminPanel({ token, showToast }) {
     } catch { setError('Erreur serveur'); }
   }
 
-  async function handleDelete(id) {
-    if (!window.confirm('Supprimer ce compte ?')) return;
-    await fetch(`${API_URL}/users/${id}`, { method: 'DELETE', headers: { 'Authorization': token } });
-    setUsers(us => us.filter(u => u.id !== id));
-    showToast('Compte supprimé', 'error');
-  }
+  const handleDelete = useCallback(async (id) => {
+  if (!window.confirm('Supprimer ce contact ?')) return;
+
+  await apiFetch(`${API_URL}/contacts/${id}`, {
+    method: 'DELETE'
+  });
+
+  setContacts(cs => cs.filter(c => c.id !== id));
+
+  showToast('Contact supprimé', 'error');
+}, [apiFetch]);
 
   async function handleReset(e) {
     e.preventDefault();
