@@ -1324,20 +1324,18 @@ export default function App() {
   setPage(1);
 }, []);
 
-  const totalPages = Math.max(1, Math.ceil(filteredContacts.length / PAGE_SIZE));
-  const pagedContacts = filteredContacts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const checkinIds = useMemo(
+ const totalPages = useMemo(
+  () => Math.max(1, Math.ceil(filteredContacts.length / PAGE_SIZE)),
+  [filteredContacts.length]
+);
+
+const pagedContacts = useMemo(
   () =>
-    new Set(
-      contacts
-        .filter(
-          c =>
-            !c.pris_en_charge &&
-            (c.remarques || '').includes('[Enregistrement tablette accueil]')
-        )
-        .map(c => c.id)
+    filteredContacts.slice(
+      (page - 1) * PAGE_SIZE,
+      page * PAGE_SIZE
     ),
-  [contacts]
+  [filteredContacts, page]
 );
 
   const ficheContacts = ficheArtiste
