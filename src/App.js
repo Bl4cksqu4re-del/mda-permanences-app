@@ -615,35 +615,154 @@ function getDaysInMonth(mois) {
 }
 
 function BaseHoraireEditor({ user, onSave, onCancel }) {
+  function BaseHoraireEditor({ user, onSave, onCancel }) {
   const [heuresSemaine, setHeuresSemaine] = useState(user.heures_semaine_base);
   const [joursSemaine, setJoursSemaine] = useState(user.jours_semaine_base);
   const [contratMois, setContratMois] = useState(user.heures_contrat_mois);
 
+  const [planning, setPlanning] = useState(
+    user.planning_base || {
+      0: 0,
+      1: 7,
+      2: 7,
+      3: 7,
+      4: 7,
+      5: 7,
+      6: 0
+    }
+  );
+
+  const jours = [
+    ['1', 'Lun'],
+    ['2', 'Mar'],
+    ['3', 'Mer'],
+    ['4', 'Jeu'],
+    ['5', 'Ven'],
+    ['6', 'Sam'],
+    ['0', 'Dim']
+  ];
+
   function suggererContrat() {
-    // Mensualisation classique : heures/semaine × 52 / 12
-    const val = Math.round((parseFloat(heuresSemaine) || 0) * 52 / 12 * 100) / 100;
+    const val =
+      Math.round(
+        ((parseFloat(heuresSemaine) || 0) * 52 / 12) * 100
+      ) / 100;
+
     setContratMois(val);
   }
 
+  function updateJour(jour, value) {
+    setPlanning(p => ({
+      ...p,
+      [jour]:== '' ? '' : parseFloat(value)
+    }));
+  }
+
   return (
-    <div style={{display:'flex', flexWrap:'wrap', alignItems:'center', gap:'6px'}}>
-      <input type="number" step="0.5" min="0" value={heuresSemaine} autoFocus
-        onChange={e => setHeuresSemaine(e.target.value)} style={{width:'56px'}} title="Heures / semaine" />
-      <span style={{fontSize:'.85em', color:'var(--muted)'}}>h/sem sur</span>
-      <input type="number" step="0.5" min="0" max="7" value={joursSemaine}
-        onChange={e => setJoursSemaine(e.target.value)} style={{width:'44px'}} title="Jours / semaine" />
-      <span style={{fontSize:'.85em', color:'var(--muted)'}}>j</span>
-      <button type="button" className="btn-icon" title="Suggérer le contrat mensuel (mensualisation)" onClick={suggererContrat}>≈</button>
-      <input type="number" step="0.01" min="0" value={contratMois}
-        onChange={e => setContratMois(e.target.value)} style={{width:'70px'}} title="Contrat mensuel (h)" />
-      <span style={{fontSize:'.85em', color:'var(--muted)'}}>h/mois</span>
-      <button type="button" className="btn btn--sm btn--primary"
-        onClick={() => onSave({ heures_semaine_base: heuresSemaine, jours_semaine_base: joursSemaine, heures_contrat_mois: contratMois })}>
-        ✓
-      </button>
-      <button type="button" className="btn btn--sm btn--ghost" onClick={onCancel}>✕</button>
+    <div style={{display:'flex', flexDirection:'column', gap:'10px'}}>
+
+      <div style={{display:'flex', flexWrap:'wrap', alignItems:'center', gap:'6px'}}>
+        <input
+          type="number"
+          step="0.5"
+          min="0"
+          value={heuresSemaine}
+          onChange={e => setHeuresSemaine(e.target.value)}
+          style={{width:'56px'}}
+        />
+
+        <span>h/sem sur</span>
+
+        <input
+          type="number"
+          step="0.5"
+          min="0"
+          max="7"
+          value={joursSemaine}
+          onChange={e => setJoursSemaine(e.target.value)}
+          style={{width:'44px'}}
+        />
+
+        <span>j</span>
+
+        <button
+          type="button"
+          className="btn-icon"
+          onClick={suggererContrat}
+        >
+          ≈
+        </button>
+
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          value={contratMois}
+          onChange={e => setContratMois(e.target.value)}
+          style={{width:'80px'}}
+        />
+
+        <span>h/mois</span>
+      </div>
+
+      <div
+        style={{
+          display:'grid',
+          gridTemplateColumns:'repeat(7, minmax(60px,1fr))',
+          gap:'8px'
+        }}
+      >
+        {jours.map(([key,label]) => (
+          <div key={key}>
+            <label
+              style={{
+                display:'block',
+                fontSize:'.8rem',
+                color:'var(--muted)'
+              }}
+            >
+              {label}
+            </label>
+
+            <input
+              type="number"
+              step="0.25"
+              min="0"
+              value={planning[key] ?? ''}
+              onChange={e => updateJour(key, e.target.value)}
+              style={{width:'100%'}}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:'flex', gap:'8px'}}>
+        <button
+          type="button"
+          className="btn btn--sm btn--primary"
+          onClick={() =>
+            onSave({
+              heures_semaine_base: heuresSemaine,
+              jours_semaine_base: joursSemaine,
+              heures_contrat_mois: contratMois,
+              planning_base: planning
+            })
+          }
+        >
+          ✓ Enregistrer
+        </button>
+
+        <button
+          type="button"
+          className="btn btn--sm btn--ghost"
+          onClick={onCancel}
+        >
+          ✕
+        </button>
+      </div>
     </div>
   );
+}
 }
 
 function TimesheetView({ token, currentUser, showToast }) {
