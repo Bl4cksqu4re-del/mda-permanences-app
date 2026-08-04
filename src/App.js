@@ -615,7 +615,6 @@ function getDaysInMonth(mois) {
 }
 
 function BaseHoraireEditor({ user, onSave, onCancel }) {
-  function BaseHoraireEditor({ user, onSave, onCancel }) {
   const [heuresSemaine, setHeuresSemaine] = useState(user.heures_semaine_base);
   const [joursSemaine, setJoursSemaine] = useState(user.jours_semaine_base);
   const [contratMois, setContratMois] = useState(user.heures_contrat_mois);
@@ -632,7 +631,7 @@ function BaseHoraireEditor({ user, onSave, onCancel }) {
     }
   );
 
-  const jours = [
+  const joursPlanning = [
     ['1', 'Lun'],
     ['2', 'Mar'],
     ['3', 'Mer'],
@@ -641,34 +640,39 @@ function BaseHoraireEditor({ user, onSave, onCancel }) {
     ['6', 'Sam'],
     ['0', 'Dim']
   ];
+function suggererContrat() {
+  const val =
+    Math.round(
+      ((parseFloat(heuresSemaine) || 0) * 52 / 12) * 100
+    ) / 100;
 
-  function suggererContrat() {
-    const val =
-      Math.round(
-        ((parseFloat(heuresSemaine) || 0) * 52 / 12) * 100
-      ) / 100;
+  setContratMois(val);
+}
 
-    setContratMois(val);
-  }
+function updateJour(jour, value) {
+  setPlanning(prev => ({
+    ...prev,
+    [jour]: value === '' ? '' : Number(value)
+  }));
+}
 
-  function updateJour(jour, value) {
-    setPlanning(p => ({
-      ...p,
-      [jour]:== '' ? '' : parseFloat(value)
-    }));
-  }
-
-  return (
-    <div style={{display:'flex', flexDirection:'column', gap:'10px'}}>
-
-      <div style={{display:'flex', flexWrap:'wrap', alignItems:'center', gap:'6px'}}>
+return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: '6px'
+        }}
+      >
         <input
           type="number"
           step="0.5"
           min="0"
           value={heuresSemaine}
           onChange={e => setHeuresSemaine(e.target.value)}
-          style={{width:'56px'}}
+          style={{ width: '56px' }}
         />
 
         <span>h/sem sur</span>
@@ -680,7 +684,7 @@ function BaseHoraireEditor({ user, onSave, onCancel }) {
           max="7"
           value={joursSemaine}
           onChange={e => setJoursSemaine(e.target.value)}
-          style={{width:'44px'}}
+          style={{ width: '44px' }}
         />
 
         <span>j</span>
@@ -699,7 +703,7 @@ function BaseHoraireEditor({ user, onSave, onCancel }) {
           min="0"
           value={contratMois}
           onChange={e => setContratMois(e.target.value)}
-          style={{width:'80px'}}
+          style={{ width: '80px' }}
         />
 
         <span>h/mois</span>
@@ -707,18 +711,18 @@ function BaseHoraireEditor({ user, onSave, onCancel }) {
 
       <div
         style={{
-          display:'grid',
-          gridTemplateColumns:'repeat(7, minmax(60px,1fr))',
-          gap:'8px'
+          display: 'grid',
+          gridTemplateColumns: 'repeat(7, minmax(60px,1fr))',
+          gap: '8px'
         }}
       >
-        {jours.map(([key,label]) => (
+        {joursPlanning.map(([key, label]) => (
           <div key={key}>
             <label
               style={{
-                display:'block',
-                fontSize:'.8rem',
-                color:'var(--muted)'
+                display: 'block',
+                fontSize: '.8rem',
+                color: 'var(--muted)'
               }}
             >
               {label}
@@ -730,24 +734,24 @@ function BaseHoraireEditor({ user, onSave, onCancel }) {
               min="0"
               value={planning[key] ?? ''}
               onChange={e => updateJour(key, e.target.value)}
-              style={{width:'100%'}}
+              style={{ width: '100%' }}
             />
           </div>
         ))}
       </div>
 
-      <div style={{display:'flex', gap:'8px'}}>
+      <div style={{ display: 'flex', gap: '8px' }}>
         <button
           type="button"
           className="btn btn--sm btn--primary"
-          onClick={() =>
-            onSave({
-              heures_semaine_base: heuresSemaine,
-              jours_semaine_base: joursSemaine,
-              heures_contrat_mois: contratMois,
-              planning_base: planning
-            })
-          }
+         onClick={() => {
+  onSave({
+    heures_semaine_base: heuresSemaine,
+    jours_semaine_base: joursSemaine,
+    heures_contrat_mois: contratMois,
+    planning_base: planning
+  });
+}}
         >
           ✓ Enregistrer
         </button>
@@ -762,7 +766,6 @@ function BaseHoraireEditor({ user, onSave, onCancel }) {
       </div>
     </div>
   );
-}
 }
 
 function TimesheetView({ token, currentUser, showToast }) {
