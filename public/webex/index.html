@@ -50,12 +50,14 @@
     .btn--ghost { background: white; border: 1.5px solid var(--border); color: var(--text); }
 
     /* Stats cards */
-    .stats-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stats-cards { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; margin-bottom: 24px; }
     .stat-card { background: white; border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); border-top: 4px solid var(--border); }
     .stat-card--total  { border-color: var(--blue); }
     .stat-card--dec    { border-color: var(--mint); }
     .stat-card--manq   { border-color: #f0ad00; }
     .stat-card--duree  { border-color: var(--azure); }
+    .stat-card--attente{ border-color: #6831FF; }
+    .stat-card--uniq   { border-color: #1C1F2C; }
     .stat-card__val   { font-size: 36px; font-weight: 800; color: var(--charbon); }
     .stat-card__label { font-size: 13px; color: var(--muted); margin-top: 4px; }
     .stat-card__sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
@@ -91,6 +93,9 @@
 
     footer { text-align: center; padding: 16px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); }
 
+    @media (max-width: 900px) {
+      .stats-cards { grid-template-columns: 1fr 1fr 1fr; }
+    }
     @media (max-width: 700px) {
       .stats-cards { grid-template-columns: 1fr 1fr; }
       .grid2 { grid-template-columns: 1fr; }
@@ -147,6 +152,14 @@
 
     <div class="import-status" id="import-status">Chargement…</div>
 
+    <div class="section section--full" style="margin-bottom:20px">
+      <h3 style="display:flex;align-items:center;justify-content:space-between">
+        Historique des imports
+        <button class="btn btn--ghost" style="padding:4px 12px;font-size:12px" onclick="loadImportHistory()">↻ Actualiser</button>
+      </h3>
+      <div id="import-history"><div class="empty">Chargement…</div></div>
+    </div>
+
     <div id="content"><div class="empty">Chargement des statistiques…</div></div>
   </div>
 </main>
@@ -183,6 +196,7 @@
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
     loadStats();
+    loadImportHistory();
   }
 
   if (token) showDashboard();
@@ -229,13 +243,14 @@
         const res = await fetch(`${API_URL}/calls/import`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': token },
-          body: JSON.stringify({ csv: e.target.result })
+          body: JSON.stringify({ csv: e.target.result, filename: file.name })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Erreur import');
         document.getElementById('upload-filename').textContent =
           `✓ ${file.name} — ${data.total} appels traités (${data.inserted} nouveaux, ${data.updated} mis à jour)`;
         loadStats();
+        loadImportHistory();
       } catch(err) {
         document.getElementById('upload-filename').textContent = `✗ Erreur : ${err.message}`;
       }
@@ -249,6 +264,45 @@
     if (h > 0) return `${h}h${m > 0 ? m+'m' : ''}`;
     if (m > 0) return `${m}m${s > 0 ? s+'s' : ''}`;
     return `${s}s`;
+  }
+
+  async function loadImportHistory() {
+    try {
+      const res = await fetch(`${API_URL}/calls/imports`, { headers: { 'Authorization': token } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      renderImportHistory(data);
+    } catch(e) {
+      document.getElementById('import-history').innerHTML = `<div class="empty">Historique indisponible : ${e.message}</div>`;
+    }
+  }
+
+  function renderImportHistory(imports) {
+    const el = document.getElementById('import-history');
+    if (!imports.length) {
+      el.innerHTML = '<div class="empty">Aucun import enregistré pour le moment.</div>';
+      return;
+    }
+    el.innerHTML = `
+      <table>
+        <thead><tr><th>Importé le</th><th>Par</th><th>Fichier</th><th>Période couverte</th><th>Appels traités</th></tr></thead>
+        <tbody>
+          ${imports.map(imp => {
+            const dt = new Date(imp.imported_at).toLocaleString('fr-FR');
+            const periode = (imp.date_min && imp.date_max)
+              ? `${new Date(imp.date_min).toLocaleDateString('fr-FR')} → ${new Date(imp.date_max).toLocaleDateString('fr-FR')}`
+              : '—';
+            return `<tr>
+              <td>${dt}</td>
+              <td>${imp.imported_by || '—'}</td>
+              <td>${imp.filename || '—'}</td>
+              <td>${periode}</td>
+              <td>${imp.total} <span style="color:var(--muted)">(${imp.inserted} nouveaux, ${imp.updated} mis à jour)</span></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
   }
 
   async function loadStats() {
@@ -317,6 +371,16 @@
           <div class="stat-card__val">${fmt(d.dureeMoy)}</div>
           <div class="stat-card__label">Durée moyenne</div>
           <div class="stat-card__sub">Total : ${fmt(d.dureeTotal)}</div>
+        </div>
+        <div class="stat-card stat-card--attente">
+          <div class="stat-card__val">${d.attenteMoy != null ? fmt(d.attenteMoy) : '—'}</div>
+          <div class="stat-card__label">Attente moy. avant décroché</div>
+          <div class="stat-card__sub">Entre le début de l'appel et la prise en charge</div>
+        </div>
+        <div class="stat-card stat-card--uniq">
+          <div class="stat-card__val">${d.appelantsUniques}</div>
+          <div class="stat-card__label">Appelants uniques</div>
+          <div class="stat-card__sub">${d.total > 0 ? (d.total/d.appelantsUniques).toFixed(1) : 0} appel(s) / personne en moyenne</div>
         </div>
       </div>
 
