@@ -451,7 +451,7 @@ const ContactTable = React.memo(function ContactTable({ contacts, onEdit, onDele
         {children} {active ? (sort.dir === 'asc' ? '↑' : '↓') : <span style={{opacity:.3}}>↕</span>}
       </th>
     );
-  });
+    }
   if (!contacts.length) return <div className="empty-state">Aucun contact enregistré pour cette période.</div>;
   return (
     <div className="table-wrapper">
@@ -504,7 +504,7 @@ const ContactTable = React.memo(function ContactTable({ contacts, onEdit, onDele
       </table>
     </div>
   );
-}
+});
 
 function FicheArtiste({ nom, contacts, customMotifs, onClose, onEdit }) {
   return (
