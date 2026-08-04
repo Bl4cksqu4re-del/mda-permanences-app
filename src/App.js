@@ -443,7 +443,7 @@ function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifA
   );
 }
 
-function ContactTable({ contacts, onEdit, onDelete, customMotifs, onFiche, toggleSort, sort, checkinIds, onPrisEnCharge }) {
+const ContactTable = React.memo(function ContactTable({ contacts, onEdit, onDelete, customMotifs, onFiche, toggleSort, sort, checkinIds, onPrisEnCharge }) {
   function SortTh({ col, children }) {
     const active = sort.col === col;
     return (
@@ -451,7 +451,7 @@ function ContactTable({ contacts, onEdit, onDelete, customMotifs, onFiche, toggl
         {children} {active ? (sort.dir === 'asc' ? '↑' : '↓') : <span style={{opacity:.3}}>↕</span>}
       </th>
     );
-  }
+  });
   if (!contacts.length) return <div className="empty-state">Aucun contact enregistré pour cette période.</div>;
   return (
     <div className="table-wrapper">
@@ -582,7 +582,7 @@ function Dashboard({ stats }) {
       </div>
     </div>
   );
-}
+});
 
 const MOTIFS_TEMPS = [
   { value: 'CP', label: 'Congé payé' },
@@ -1313,6 +1313,19 @@ export default function App() {
 
   const totalPages = Math.max(1, Math.ceil(filteredContacts.length / PAGE_SIZE));
   const pagedContacts = filteredContacts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const checkinIds = useMemo(
+  () =>
+    new Set(
+      contacts
+        .filter(
+          c =>
+            !c.pris_en_charge &&
+            (c.remarques || '').includes('[Enregistrement tablette accueil]')
+        )
+        .map(c => c.id)
+    ),
+  [contacts]
+);
 
   const ficheContacts = ficheArtiste
     ? contacts.filter(c => {
@@ -1479,7 +1492,7 @@ export default function App() {
             )}
             {loading ? <div className="loading">Chargement…</div> : <>
               <ContactTable contacts={pagedContacts} customMotifs={customMotifs} onEdit={row => setEditing(row)} onDelete={handleDelete} onFiche={setFicheArtiste} toggleSort={toggleSort} sort={sort}
-                checkinIds={new Set(contacts.filter(c => !c.pris_en_charge && (c.remarques || '').includes('[Enregistrement tablette accueil]')).map(c => c.id))}
+                checkinIds={checkinIds}
                 onPrisEnCharge={handlePrisEnCharge} />
               {totalPages > 1 && (
                 <div className="pagination">
