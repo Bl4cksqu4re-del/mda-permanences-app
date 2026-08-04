@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import API_URL from './config';
 import './App.css';
 
@@ -1252,27 +1252,59 @@ export default function App() {
     localStorage.setItem('mda_dark', darkMode ? '1' : '0');
   }, [darkMode]);
 
-  const filteredContacts = contacts.filter(c => {
+ const filteredContacts = useMemo(() => {
+  return contacts.filter(c => {
     if (search.trim()) {
       const q = search.toLowerCase();
-      if (!(c.prenom || '').toLowerCase().includes(q) &&
-          !(c.nom || '').toLowerCase().includes(q) &&
-          !(c.mail || '').toLowerCase().includes(q)) return false;
+
+      if (
+        !(c.prenom || '').toLowerCase().includes(q) &&
+        !(c.nom || '').toLowerCase().includes(q) &&
+        !(c.mail || '').toLowerCase().includes(q)
+      ) {
+        return false;
+      }
     }
+
     if (filters.conseiller) {
       const key = `qui_${filters.conseiller.toLowerCase()}`;
-      if (!c[key]) return false;
+
+      if (!c[key]) {
+        return false;
+      }
     }
-    if (filters.a_rappeler && !c.a_rappeler) return false;
+
+    if (filters.a_rappeler && !c.a_rappeler) {
+      return false;
+    }
+
     return true;
   }).sort((a, b) => {
-    let va = a[sort.col] || ''; let vb = b[sort.col] || '';
-    if (sort.col === 'date') { va = a.date || ''; vb = b.date || ''; }
-    if (sort.col === 'artiste') { va = `${a.prenom||''} ${a.nom||''}`.trim(); vb = `${b.prenom||''} ${b.nom||''}`.trim(); }
-    if (sort.col === 'qui') { va = getQui(a); vb = getQui(b); }
+    let va = a[sort.col] || '';
+    let vb = b[sort.col] || '';
+
+    if (sort.col === 'date') {
+      va = a.date || '';
+      vb = b.date || '';
+    }
+
+    if (sort.col === 'artiste') {
+      va = `${a.prenom || ''} ${a.nom || ''}`.trim();
+      vb = `${b.prenom || ''} ${b.nom || ''}`.trim();
+    }
+
+    if (sort.col === 'qui') {
+      va = getQui(a);
+      vb = getQui(b);
+    }
+
     const cmp = va < vb ? -1 : va > vb ? 1 : 0;
-    return sort.dir === 'asc' ? cmp : -cmp;
+
+    return sort.dir === 'asc'
+      ? cmp
+      : -cmp;
   });
+}, [contacts, search, filters, sort]);
 
   function toggleSort(col) {
     setSort(s => s.col === col ? { col, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' });
