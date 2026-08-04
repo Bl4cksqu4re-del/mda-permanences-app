@@ -1170,6 +1170,9 @@ export default function App() {
     fetch(url, { ...options, headers: { ...(options.headers || {}), 'Authorization': token } }),
     [token]
   );
+  const handleEdit = useCallback((row) => {
+  setEditing(row);
+}, []);
 
   const loadContacts = useCallback(async () => {
     setLoading(true);
@@ -1491,7 +1494,7 @@ export default function App() {
               </div>
             )}
             {loading ? <div className="loading">Chargement…</div> : <>
-              <ContactTable contacts={pagedContacts} customMotifs={customMotifs} onEdit={row => setEditing(row)} onDelete={handleDelete} onFiche={setFicheArtiste} toggleSort={toggleSort} sort={sort}
+              <ContactTable contacts={pagedContacts} customMotifs={customMotifs} onEdit={handleEdit} onDelete={handleDelete} onFiche={setFicheArtiste} toggleSort={toggleSort} sort={sort}
                 checkinIds={checkinIds}
                 onPrisEnCharge={handlePrisEnCharge} />
               {totalPages > 1 && (
