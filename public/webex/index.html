@@ -28,12 +28,16 @@
       margin-bottom: 12px;
     }
     .upload-zone:hover, .upload-zone.drag { border-color: var(--blue); background: rgba(0,4,242,.03); }
-    .upload-zone.has-file { border-color: var(--mint); border-style: solid; }
     .upload-icon { font-size: 32px; margin-bottom: 8px; }
     .upload-title { font-size: 15px; font-weight: 700; color: var(--charbon); margin-bottom: 4px; }
     .upload-sub { font-size: 12px; color: var(--muted); }
-    .upload-filename { font-size: 13px; font-weight: 600; color: var(--mint); margin-top: 6px; }
     #file-input { display: none; }
+
+    .upload-results { margin-bottom: 20px; }
+    .upload-result { background: white; border-radius: var(--radius); padding: 10px 16px; margin-bottom: 6px; font-size: 13px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 10px; }
+    .upload-result--ok  { border-left: 4px solid var(--mint); }
+    .upload-result--err { border-left: 4px solid #c53030; color: #c53030; }
+    .upload-result--pending { border-left: 4px solid var(--border); color: var(--muted); }
 
     .import-status {
       background: white; border-radius: var(--radius); padding: 12px 18px;
@@ -66,7 +70,7 @@
     .section { background: white; border-radius: var(--radius); padding: 20px 24px; box-shadow: var(--shadow); }
     .section h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 14px; }
 
-    .bar-row { display: grid; grid-template-columns: 160px 1fr 50px; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .bar-row { display: grid; grid-template-columns: 90px 1fr 50px; align-items: center; gap: 10px; margin-bottom: 8px; }
     .bar-label { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .bar-track { height: 10px; background: var(--border); border-radius: 5px; overflow: hidden; }
     .bar-fill  { height: 100%; border-radius: 5px; }
@@ -108,7 +112,7 @@
   <div class="logo">MDA</div>
   <div>
     <div class="header-title">Tableau de bord — Appels téléphoniques</div>
-    <div class="header-sub">La Maison des Artistes · Import Orange Business</div>
+    <div class="header-sub">La Maison des Artistes · Statistiques officielles Webex</div>
   </div>
 </header>
 
@@ -145,11 +149,12 @@
          ondragleave="this.classList.remove('drag')"
          ondrop="handleDrop(event)">
       <div class="upload-icon">📂</div>
-      <div class="upload-title">Importer un nouveau CSV Orange Business</div>
-      <div class="upload-sub">Glissez-déposez le fichier ou cliquez pour sélectionner — les données sont enregistrées de façon permanente</div>
-      <div class="upload-filename" id="upload-filename"></div>
+      <div class="upload-title">Importer des exports Webex (group_statistics / agent_statistics)</div>
+      <div class="upload-sub">Glissez-déposez un ou plusieurs CSV, ou cliquez pour sélectionner — le type est détecté automatiquement au nom du fichier</div>
     </div>
-    <input type="file" id="file-input" accept=".csv" onchange="handleFile(this.files[0])">
+    <input type="file" id="file-input" accept=".csv" multiple onchange="handleFiles(this.files)">
+
+    <div class="upload-results" id="upload-results"></div>
 
     <div class="import-status" id="import-status">Chargement…</div>
 
@@ -165,7 +170,7 @@
   </div>
 </main>
 
-<footer>Tous droits réservés © Bl4cksquare · La Maison des Artistes · art. L111-1 du CPI</footer>
+<footer>Tous droits réservés © La Maison des Artistes · art. L111-1 du CPI</footer>
 
 <script>
   const API_URL = 'https://mda-permanences-api.onrender.com';
@@ -202,6 +207,14 @@
 
   if (token) showDashboard();
 
+  function logout() {
+    localStorage.removeItem('mda_token');
+    sessionStorage.removeItem('mda_token');
+    token = '';
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+
   // Dates
   function setThisWeek() {
     useAllData = false;
@@ -225,50 +238,82 @@
     loadStats();
   }
 
-  // Drag & drop
+  // Import multi-fichiers : le type (group / agent) est déterminé par le nom de fichier,
+  // convention Webex : "AAAAMMJJ_hhmmss_group_statistics.csv" / "..._agent_statistics.csv"
   function handleDrop(e) {
     e.preventDefault();
     document.getElementById('upload-zone').classList.remove('drag');
-    const f = e.dataTransfer.files[0];
-    if (f) handleFile(f);
+    if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
   }
 
-  function handleFile(file) {
-    if (!file) return;
-    document.getElementById('upload-filename').textContent = `⏳ Import de ${file.name} en cours...`;
-    document.getElementById('upload-zone').classList.add('has-file');
+  function detecterType(filename) {
+    const n = filename.toLowerCase();
+    if (n.includes('group_statistics')) return 'group';
+    if (n.includes('agent_statistics')) return 'agent';
+    return null;
+  }
 
-    const reader = new FileReader();
-    reader.onload = async e => {
+  function readAsLatin1(file) {
+    // Les exports Webex sont encodés en ISO-8859-1 (accents), pas en UTF-8.
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
+      reader.onerror = reject;
+      reader.readAsText(file, 'ISO-8859-1');
+    });
+  }
+
+  async function handleFiles(fileList) {
+    const files = Array.from(fileList);
+    const resultsEl = document.getElementById('upload-results');
+    resultsEl.innerHTML = '';
+
+    const rows = files.map(f => {
+      const div = document.createElement('div');
+      div.className = 'upload-result upload-result--pending';
+      div.textContent = `⏳ ${f.name}`;
+      resultsEl.appendChild(div);
+      return div;
+    });
+
+    let ok = 0;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const row = rows[i];
+      const type = detecterType(file.name);
+      if (!type) {
+        row.className = 'upload-result upload-result--err';
+        row.textContent = `✗ ${file.name} — nom non reconnu (attendu "..._group_statistics.csv" ou "..._agent_statistics.csv")`;
+        continue;
+      }
       try {
-        const res = await fetch(`${API_URL}/calls/import`, {
+        const csv = await readAsLatin1(file);
+        const endpoint = type === 'group' ? '/webex/import/group' : '/webex/import/agents';
+        const res = await fetch(`${API_URL}${endpoint}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': token },
-          body: JSON.stringify({ csv: e.target.result, filename: file.name })
+          body: JSON.stringify({ csv, filename: file.name })
         });
         if (res.status === 401) { logout(); return; }
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Erreur import');
-        document.getElementById('upload-filename').textContent =
-          `✓ ${file.name} — ${data.total} appels traités (${data.inserted} nouveaux, ${data.updated} mis à jour)`;
-        loadStats();
-        loadImportHistory();
-      } catch(err) {
-        document.getElementById('upload-filename').textContent = `✗ Erreur : ${err.message}`;
+        row.className = 'upload-result upload-result--ok';
+        row.textContent = `✓ ${file.name} — ${data.total} ligne(s), ${data.inserted} nouvelle(s), ${data.updated} mise(s) à jour`;
+        ok++;
+      } catch (err) {
+        row.className = 'upload-result upload-result--err';
+        row.textContent = `✗ ${file.name} — ${err.message}`;
       }
-    };
-    reader.readAsText(file, 'UTF-8');
-  }
+    }
 
-  function logout() {
-    localStorage.removeItem('mda_token');
-    sessionStorage.removeItem('mda_token');
-    token = '';
-    document.getElementById('dashboard').style.display = 'none';
-    document.getElementById('login-screen').style.display = 'flex';
+    if (ok > 0) {
+      loadStats();
+      loadImportHistory();
+    }
   }
 
   function fmt(sec) {
+    if (sec == null) return '—';
     if (!sec) return '0s';
     const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
     if (h > 0) return `${h}h${m > 0 ? m+'m' : ''}`;
@@ -296,7 +341,7 @@
     }
     el.innerHTML = `
       <table>
-        <thead><tr><th>Importé le</th><th>Par</th><th>Fichier</th><th>Période couverte</th><th>Appels traités</th></tr></thead>
+        <thead><tr><th>Importé le</th><th>Par</th><th>Fichier</th><th>Période couverte</th><th>Lignes</th></tr></thead>
         <tbody>
           ${imports.map(imp => {
             const dt = new Date(imp.imported_at).toLocaleString('fr-FR');
@@ -324,7 +369,7 @@
       const params = new URLSearchParams();
       if (from) params.set('from', from);
       if (to)   params.set('to', to);
-      const res = await fetch(`${API_URL}/calls/stats?${params}`, { headers: { 'Authorization': token } });
+      const res = await fetch(`${API_URL}/webex/stats?${params}`, { headers: { 'Authorization': token } });
       if (res.status === 401) { logout(); return; }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -333,7 +378,7 @@
       if (data.lastImport) {
         statusEl.innerHTML = `📊 Données disponibles du <strong>${data.dataRange.min ? new Date(data.dataRange.min).toLocaleDateString('fr-FR') : '?'}</strong> au <strong>${data.dataRange.max ? new Date(data.dataRange.max).toLocaleDateString('fr-FR') : '?'}</strong> — Dernier import le ${new Date(data.lastImport).toLocaleString('fr-FR')}`;
       } else {
-        statusEl.innerHTML = `Aucune donnée importée. Glissez votre premier CSV Orange Business ci-dessus.`;
+        statusEl.innerHTML = `Aucune donnée importée. Glissez vos exports Webex (group_statistics / agent_statistics) ci-dessus.`;
       }
 
       if (!from && !to) {
@@ -348,19 +393,16 @@
   }
 
   function renderDashboard(d) {
-    const taux = d.total > 0 ? Math.round(d.decroches/d.total*100) : 0;
-    const repondants = d.parRepondant || [];
-    const maxRep = repondants.length > 0 ? repondants[0].appels : 1;
-
-    const heures = d.parHeure || [];
-    const maxH = heures.length > 0 ? Math.max(...heures.map(h=>h.total)) : 1;
-
-    const jours = d.parJour || [];
-
     if (d.total === 0) {
-      document.getElementById('content').innerHTML = '<div class="empty">Aucun appel pour cette période. Importez un CSV ou changez les dates.</div>';
+      document.getElementById('content').innerHTML = '<div class="empty">Aucune donnée pour cette période. Importez vos exports Webex ci-dessus ou changez les dates.</div>';
       return;
     }
+
+    const agents = d.parAgent || [];
+    const heures = d.parHeure || [];
+    const maxH = heures.length > 0 ? Math.max(...heures.map(h => h.total), 1) : 1;
+    const jours = d.parJour || [];
+    const agentsActifs = agents.filter(a => a.appelsTraites > 0).length;
 
     document.getElementById('content').innerHTML = `
       <div class="stats-cards">
@@ -370,49 +412,55 @@
           <div class="stat-card__sub">${d.periode.from && d.periode.to ? `Du ${new Date(d.periode.from).toLocaleDateString('fr-FR')} au ${new Date(d.periode.to).toLocaleDateString('fr-FR')}` : ''}</div>
         </div>
         <div class="stat-card stat-card--dec">
-          <div class="stat-card__val">${d.decroches}</div>
-          <div class="stat-card__label">Décrochés par l'équipe</div>
-          <div class="stat-card__sub">${taux}% de taux de décroché</div>
+          <div class="stat-card__val">${d.answered}</div>
+          <div class="stat-card__label">Décrochés</div>
+          <div class="stat-card__sub">${d.tauxDecroche}% de taux de décroché</div>
         </div>
         <div class="stat-card stat-card--manq">
-          <div class="stat-card__val">${d.nonDecroches}</div>
-          <div class="stat-card__label">Non pris / manqués</div>
-          <div class="stat-card__sub">${100-taux}% non décrochés</div>
+          <div class="stat-card__val">${d.abandoned}</div>
+          <div class="stat-card__label">Abandonnés</div>
+          <div class="stat-card__sub">+ ${d.overflow} débordés, ${d.transferred} transférés, ${d.timed} temporisés</div>
+        </div>
+        <div class="stat-card stat-card--attente">
+          <div class="stat-card__val">${fmt(d.attenteMoy)}</div>
+          <div class="stat-card__label">Attente moy. avant décroché</div>
+          <div class="stat-card__sub">Source : group_statistics.csv</div>
         </div>
         <div class="stat-card stat-card--duree">
           <div class="stat-card__val">${fmt(d.dureeMoy)}</div>
-          <div class="stat-card__label">Durée moyenne</div>
-          <div class="stat-card__sub">Total : ${fmt(d.dureeTotal)}</div>
-        </div>
-        <div class="stat-card stat-card--attente">
-          <div class="stat-card__val">${d.attenteMoy != null ? fmt(d.attenteMoy) : '—'}</div>
-          <div class="stat-card__label">Attente moy. avant décroché</div>
-          <div class="stat-card__sub">Entre le début de l'appel et la prise en charge</div>
+          <div class="stat-card__label">Durée moy. de conversation</div>
+          <div class="stat-card__sub">Source : agent_statistics.csv</div>
         </div>
         <div class="stat-card stat-card--uniq">
-          <div class="stat-card__val">${d.appelantsUniques}</div>
-          <div class="stat-card__label">Appelants uniques</div>
-          <div class="stat-card__sub">${d.total > 0 ? (d.total/d.appelantsUniques).toFixed(1) : 0} appel(s) / personne en moyenne</div>
+          <div class="stat-card__val">${agentsActifs}</div>
+          <div class="stat-card__label">Conseiller·ères actif·ves</div>
+          <div class="stat-card__sub">${agents.length} au total sur la période</div>
         </div>
       </div>
 
       <div class="grid2">
         <div class="section">
-          <h3>Par répondant</h3>
-          ${repondants.length === 0 ? '<div class="empty">Aucune donnée</div>' : repondants.map(r => `
-            <div class="bar-row">
-              <div class="bar-label" title="${r.nom}">${r.nom}</div>
-              <div class="bar-track"><div class="bar-fill" style="width:${Math.round(r.appels/maxRep*100)}%;background:var(--blue)"></div></div>
-              <div class="bar-val">${r.appels}</div>
-            </div>
-          `).join('')}
+          <h3>Par conseiller·ère</h3>
+          <table>
+            <thead><tr><th>Nom</th><th>Traités</th><th>Sans réponse</th><th>Durée moy.</th></tr></thead>
+            <tbody>
+              ${agents.length === 0 ? '<tr><td colspan="4" class="empty">Aucune donnée</td></tr>' : agents.map(a => `
+                <tr>
+                  <td>${a.nom}</td>
+                  <td><strong>${a.appelsTraites}</strong></td>
+                  <td>${a.appelsSansReponse}</td>
+                  <td>${fmt(a.dureeMoy)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
         </div>
 
         <div class="section">
           <h3>Par tranche horaire</h3>
           ${heures.length === 0 ? '<div class="empty">Aucune donnée</div>' : heures.map(h => `
             <div class="bar-row">
-              <div class="bar-label">${h.heure}h00 – ${h.heure}h59</div>
+              <div class="bar-label">${h.heure}h00</div>
               <div class="bar-track"><div class="bar-fill" style="width:${Math.round(h.total/maxH*100)}%;background:var(--azure)"></div></div>
               <div class="bar-val">${h.total}</div>
             </div>
@@ -423,21 +471,19 @@
       <div class="section section--full">
         <h3>Détail par jour</h3>
         <table>
-          <thead><tr><th>Date</th><th>Total</th><th>Décrochés</th><th>Manqués</th><th>Taux</th><th>Durée moy.</th></tr></thead>
+          <thead><tr><th>Date</th><th>Total</th><th>Décrochés</th><th>Abandonnés</th><th>Taux</th><th>Attente moy.</th></tr></thead>
           <tbody>
             ${jours.map(j => {
-              const t = j.total, dec = j.decroches, m = t-dec;
-              const tx = t > 0 ? Math.round(dec/t*100) : 0;
-              const dm = dec > 0 ? Math.round(j.duree/dec) : 0;
+              const tx = j.total > 0 ? Math.round(j.answered/j.total*100) : 0;
               const jsDate = new Date(j.date+'T12:00:00');
               const label = jsDate.toLocaleDateString('fr-FR', {weekday:'short',day:'2-digit',month:'short',year:'numeric'});
               return `<tr>
                 <td>${label}</td>
-                <td><strong>${t}</strong></td>
-                <td><span class="badge badge--dec">${dec}</span></td>
-                <td><span class="badge badge--manq">${m}</span></td>
+                <td><strong>${j.total}</strong></td>
+                <td><span class="badge badge--dec">${j.answered}</span></td>
+                <td><span class="badge badge--manq">${j.abandoned}</span></td>
                 <td>${tx}%</td>
-                <td>${fmt(dm)}</td>
+                <td>${fmt(j.attenteMoy)}</td>
               </tr>`;
             }).join('')}
           </tbody>
