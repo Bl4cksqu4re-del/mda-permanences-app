@@ -136,6 +136,7 @@
       <button class="btn btn--ghost" onclick="setThisMonth()">Ce mois</button>
       <button class="btn btn--ghost" onclick="setAllData()">Tout l'historique</button>
       <button class="btn btn--primary" onclick="loadStats()">Filtrer</button>
+      <button class="btn btn--ghost" onclick="logout()" title="Se déconnecter">⎋ Déconnexion</button>
     </div>
 
     <!-- Upload -->
@@ -245,6 +246,7 @@
           headers: { 'Content-Type': 'application/json', 'Authorization': token },
           body: JSON.stringify({ csv: e.target.result, filename: file.name })
         });
+        if (res.status === 401) { logout(); return; }
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Erreur import');
         document.getElementById('upload-filename').textContent =
@@ -258,6 +260,14 @@
     reader.readAsText(file, 'UTF-8');
   }
 
+  function logout() {
+    localStorage.removeItem('mda_token');
+    sessionStorage.removeItem('mda_token');
+    token = '';
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+
   function fmt(sec) {
     if (!sec) return '0s';
     const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
@@ -269,6 +279,7 @@
   async function loadImportHistory() {
     try {
       const res = await fetch(`${API_URL}/calls/imports`, { headers: { 'Authorization': token } });
+      if (res.status === 401) { logout(); return; }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       renderImportHistory(data);
@@ -314,6 +325,7 @@
       if (from) params.set('from', from);
       if (to)   params.set('to', to);
       const res = await fetch(`${API_URL}/calls/stats?${params}`, { headers: { 'Authorization': token } });
+      if (res.status === 401) { logout(); return; }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
