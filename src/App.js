@@ -554,7 +554,7 @@ function StatBar({ label, value, max, color }) {
   );
 }
 
-function Dashboard({ stats }) {
+const Dashboard = React.memo(function Dashboard({ stats }) {
   if (!stats) return <div className="loading">Chargement…</div>;
   const total = (stats.byType || []).reduce((s, r) => s + parseInt(r.n), 0);
   const tel = stats.byType?.find(r => r.type === 'TEL')?.n || 0;
