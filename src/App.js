@@ -1338,6 +1338,13 @@ const pagedContacts = useMemo(
   [filteredContacts, page]
 );
 
+// Contacts enregistrés via la tablette d'accueil, en attente d'être pris en charge
+const checkinIds = useMemo(() => new Set(
+  contacts
+    .filter(c => !c.pris_en_charge && (c.remarques || '').includes('[Enregistrement tablette accueil]'))
+    .map(c => c.id)
+), [contacts]);
+
   const ficheContacts = ficheArtiste
     ? contacts.filter(c => {
         const nom = `${c.prenom||''} ${c.nom||''}`.trim().toLowerCase();
