@@ -2,6 +2,42 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import API_URL from './config';
 import './App.css';
 
+export class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error, info) {
+    console.error('Erreur applicative interceptée :', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          minHeight: '100vh', padding: '32px', textAlign: 'center', fontFamily: 'Calibri, sans-serif'
+        }}>
+          <h2 style={{ marginBottom: '12px' }}>Un problème est survenu au chargement</h2>
+          <p style={{ color: '#6B6E82', marginBottom: '20px', maxWidth: '420px' }}>
+            Ça arrive parfois juste après une période d'inactivité, le temps que le serveur se réveille.
+            Réessayez — si ça persiste, contactez le support technique.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{ padding: '10px 24px', borderRadius: '10px', border: 'none', background: '#0004F2', color: 'white', fontWeight: 700, cursor: 'pointer' }}
+          >
+            Recharger la page
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const getDefaultType = () => {
   const day = new Date().getDay(); // 0=dim, 1=lun, 2=mar, 3=mer, 4=jeu, 5=ven, 6=sam
   return [4, 5].includes(day) ? 'PRES' : 'TEL';
@@ -204,16 +240,23 @@ function AdminPanel({ token, showToast }) {
   }
 
   const handleDelete = useCallback(async (id) => {
-  if (!window.confirm('Supprimer ce contact ?')) return;
-
-  await apiFetch(`${API_URL}/contacts/${id}`, {
-    method: 'DELETE'
-  });
-
-  setContacts(cs => cs.filter(c => c.id !== id));
-
-  showToast('Contact supprimé', 'error');
-}, [apiFetch]);
+    if (!window.confirm('Supprimer ce compte ?')) return;
+    try {
+      const res = await fetch(`${API_URL}/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': token }
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        showToast(d.error || 'Erreur lors de la suppression', 'error');
+        return;
+      }
+      setUsers(us => us.filter(u => u.id !== id));
+      showToast('Compte supprimé', 'error');
+    } catch {
+      showToast('Erreur serveur', 'error');
+    }
+  }, [token, showToast]);
 
   async function handleReset(e) {
     e.preventDefault();
@@ -398,7 +441,17 @@ function ContactForm({ initial, onSaved, onCancel, token, customMotifs, onMotifA
                     onChange={e => { const ids = form.motifs_custom || []; set('motifs_custom', e.target.checked ? [...ids, m.id] : ids.filter(id => id !== m.id)); }} />
                   {m.label}
                 </label>
-                <button type="button" className="pill-delete" title="Supprimer ce motif" onClick={() => onMotifDeleted(m.id)}>×</button>
+                <button type="button" className="pill-delete" title="Supprimer ce motif" onClick={async () => {
+                  if (!window.confirm(`Supprimer le motif "${m.label}" ?`)) return;
+                  try {
+                    const res = await fetch(`${API_URL}/motifs-custom/${m.id}`, {
+                      method: 'DELETE',
+                      headers: { 'Authorization': token }
+                    });
+                    if (!res.ok) { alert('Erreur lors de la suppression'); return; }
+                    onMotifDeleted(m.id);
+                  } catch { alert('Erreur serveur'); }
+                }}>×</button>
               </div>
             ))}
           </div>
@@ -1179,6 +1232,26 @@ export default function App() {
   setEditing(row);
 }, []);
 
+  const handleMotifAdded = useCallback((motif) => {
+    setCustomMotifs(ms => [...ms, motif]);
+  }, []);
+
+  const handleMotifDeleted = useCallback((id) => {
+    setCustomMotifs(ms => ms.filter(m => m.id !== id));
+  }, []);
+
+  const handlePrisEnCharge = useCallback(async (id) => {
+    try {
+      const res = await apiFetch(`${API_URL}/contacts/${id}/pris-en-charge`, { method: 'PUT' });
+      if (!res.ok) { showToast('Erreur', 'error'); return; }
+      const updated = await res.json();
+      setContacts(cs => cs.map(c => (c.id === id ? updated : c)));
+      showToast('Marqué comme pris en charge');
+    } catch (e) {
+      showToast('Erreur réseau', 'error');
+    }
+  }, [apiFetch]);
+
   const loadContacts = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
@@ -1367,31 +1440,6 @@ const checkinIds = useMemo(() => new Set(
     setContacts(cs => cs.filter(c => c.id !== id));
     showToast('Contact supprimé', 'error');
   }
-
-  const handlePrisEnCharge = useCallback(async (id) => {
-  try {
-    const res = await apiFetch(
-      `${API_URL}/contacts/${id}/pris-en-charge`,
-      { method: 'PUT' }
-    );
-
-    if (!res.ok) {
-      showToast('Erreur', 'error');
-      return;
-    }
-
-    const updated = await res.json();
-
-    setContacts(cs =>
-      cs.map(c => (c.id === id ? updated : c))
-    );
-
-    showToast('Marqué comme pris en charge');
-  } catch (e) {
-    showToast('Erreur réseau', 'error');
-  }
-}, [apiFetch]);
-``
 
   function handleExport() {
     const params = new URLSearchParams();
